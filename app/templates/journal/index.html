@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state, csrf %}
+{% block title %}Training Log{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">Training Log</h1>
+    <p class="page-sub">Post-mortems: what worked, what failed, what you learned.{% if avg %} Avg rating {{ avg }}★.{% endif %}</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('journal.edit') }}">{{ icon('book') }} New entry</a>
+</div>
+<form method="get" class="row mb-2" role="search">
+  <label class="sr-only" for="j-q">Search the log</label>
+  <input id="j-q" type="search" name="q" value="{{ q }}" placeholder="Search lessons, failures, tags..." data-search style="flex:1;min-width:200px">
+  {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
+  <button class="btn btn-sm">{{ icon('search') }} Search</button>
+  {% if q or tag %}<a class="btn btn-sm btn-ghost" href="{{ url_for('journal.index') }}">Reset</a>{% endif %}
+</form>
+{% if all_tags %}<p>{% for t in all_tags %}<a class="tag" href="?tag={{ t }}{% if q %}&q={{ q }}{% endif %}" {% if t == tag %}style="background:var(--gold)" aria-current="true"{% endif %}>#{{ t }}</a>{% endfor %}</p>{% endif %}
+
+{% for e in entries %}
+  <section class="window" aria-label="{{ e.title }}">
+    <div class="titlebar"><span class="title">{{ icon('book') }} {{ e.title }}</span><span>{{ '★' * e.rating }}{{ '☆' * (5 - e.rating) }}</span></div>
+    <div class="window-body">
+      <p class="small muted">{{ e.created_at|pretty }}{% if e.quest_title %} · <a href="{{ url_for('quests.detail', opp_id=e.opportunity_id) }}">{{ e.quest_title }}</a> ({{ C.STATUS_LABELS.get(e.quest_status, '') }}){% endif %}</p>
+      <div class="grid grid-3">
+        <div><h4>{{ sprite('heart', 2) }} Worked</h4><p>{{ e.what_worked or '-' }}</p></div>
+        <div><h4>{{ sprite('mushroom', 2) }} Failed</h4><p>{{ e.what_failed or '-' }}</p></div>
+        <div><h4>{{ sprite('star', 2) }} Lesson</h4><p>{{ e.lessons or '-' }}</p></div>
+      </div>
+      <div class="row between">
+        <div>{% for t in e.tags.split(',') if t %}<a class="tag" href="?tag={{ t }}">#{{ t }}</a>{% endfor %}</div>
+        <div class="row" style="gap:.4rem">
+          <a class="btn btn-xs" href="{{ url_for('journal.edit', entry_id=e.id) }}">{{ icon('edit') }} Edit</a>
+          <form method="post" action="{{ url_for('journal.delete', entry_id=e.id) }}" data-confirm="Delete '{{ e.title }}' from your Training Log?">{{ csrf() }}<button class="btn btn-xs btn-danger">{{ icon('trash') }} Delete</button></form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% else %}
+  {% call window('Empty log', 'book') %}
+    {% call empty_state('No entries' ~ (' match' if q or tag else ' yet'), 'After each result, spend 3 minutes on what worked and what to change. +20 XP each.', ('scroll', 'avatar')) %}
+      <a class="btn btn-primary" href="{{ url_for('journal.edit') }}">Write the first entry</a>
+    {% endcall %}
+  {% endcall %}
+{% endfor %}
+{% endblock %}

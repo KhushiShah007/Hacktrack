@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, field, csrf %}
+{% block title %}{{ 'Edit entry' if entry else 'New Training Log entry' }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ 'Edit entry' if entry else 'Post-mortem' }}</h1>
+<div style="max-width:820px">
+<form method="post" data-validate novalidate>
+  {{ csrf() }}
+  {% call window('Training Log entry', 'book') %}
+    {{ field('title', 'Title', form.get('title', ''), errors=errors, required=true, attrs='maxlength="120"', placeholder='Finalist at HackCBS!') }}
+    <div class="form-grid">
+      <div class="field"><label for="f-quest">Quest</label>
+        <select id="f-quest" name="opportunity_id"><option value="">Not linked</option>
+          {% for q in quests %}<option value="{{ q.id }}" {% if form.get('opportunity_id')|string == q.id|string %}selected{% endif %}>{{ q.title }} ({{ q.status_label }})</option>{% endfor %}</select></div>
+      <div class="field {% if errors.get('rating') %}has-error{% endif %}"><label for="f-rating">How did it go?</label>
+        <select id="f-rating" name="rating">{% for r in range(5, 0, -1) %}<option value="{{ r }}" {% if form.get('rating', 3)|string == r|string %}selected{% endif %}>{{ '★' * r }}{{ '☆' * (5 - r) }}</option>{% endfor %}</select></div>
+    </div>
+    {{ field('what_worked', 'What worked', form.get('what_worked', ''), type='textarea', attrs='rows="3"') }}
+    {{ field('what_failed', 'What failed', form.get('what_failed', ''), type='textarea', attrs='rows="3"') }}
+    {{ field('lessons', 'Lesson for next time', form.get('lessons', ''), type='textarea', attrs='rows="2"', hint='This line also appears in your generated portfolio.') }}
+    {{ field('tags', 'Tags', form.get('tags', ''), hint='comma separated: pitch, dsa, teamwork') }}
+    <div class="form-actions"><button class="btn btn-primary">{{ 'Save' if entry else 'Log it (+20 XP)' }}</button><a class="btn btn-ghost" href="{{ url_for('journal.index') }}">Cancel</a></div>
+  {% endcall %}
+</form>
+</div>
+{% endblock %}

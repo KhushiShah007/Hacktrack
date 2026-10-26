@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, field, csrf %}
+{% block title %}{{ 'Edit quest' if opp.id else 'New quest' }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ 'Edit quest' if opp.id else 'Accept a new quest' }}</h1>
+<p class="page-sub">Tip: got a WhatsApp forward or poster caption? <a href="{{ url_for('quests.briefing') }}">Paste it into Mission Briefing</a> instead.</p>
+<form method="post" data-validate novalidate>
+  {{ csrf() }}
+  {% call window('Quest details', 'edit') %}
+    <div class="form-grid">
+      <div class="field {% if errors.get('type') %}has-error{% endif %}">
+        <label for="f-type">Quest type</label>
+        <select id="f-type" name="type" data-type-select>
+          {% for key, cls in classes.items() %}
+          <option value="{{ key }}" data-stages="Stages: {{ cls().stages()|join(' → ') }}" {% if opp.type == key %}selected{% endif %}>{{ C.TYPE_LABELS[key] }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint" data-stage-hint>Stages: {{ opp.stages()|join(' → ') }}</div>
+      </div>
+      <div class="field">
+        <label for="f-status">Status</label>
+        <select id="f-status" name="status">
+          {% for s in C.STATUSES %}<option value="{{ s }}" {% if opp.status == s %}selected{% endif %}>{{ C.STATUS_LABELS[s] }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    {{ field('title', 'Title', opp.title, errors=errors, required=true, attrs='maxlength="160" autofocus') }}
+    <div class="form-grid">
+      {{ field('organizer', 'Organiser', opp.organizer, errors=errors) }}
+      {{ field('deadline', 'Final deadline', opp.deadline.replace(' ', 'T') if opp.deadline else '', type='datetime-local', errors=errors, required=true) }}
+      {{ field('link', 'Link', opp.link, type='url', errors=errors, placeholder='https://...') }}
+      {{ field('tags', 'Tags', opp.tags, hint='comma separated, e.g. ai, remote') }}
+    </div>
+    {{ field('description', 'Description', opp.description, type='textarea', attrs='rows="4" maxlength="4000"') }}
+  {% endcall %}
+
+  {% call window('Rewards, team and place', 'trophy') %}
+    <div class="form-grid">
+      {{ field('prize_text', 'Prize / stipend (as written)', opp.prize_text, hint='e.g. Rs 1,00,000 or $1500/month') }}
+      {{ field('prize_amount', 'Value in Rs (for priority)', opp.prize_amount|int if opp.prize_amount else '', type='number', errors=errors, attrs='min="0" step="1"') }}
+      {{ field('team_min', 'Team min', opp.team_min, type='number', errors=errors, attrs='min="1" max="50"') }}
+      {{ field('team_max', 'Team max', opp.team_max, type='number', errors=errors, attrs='min="1" max="50"') }}
+      <div class="field"><label for="f-mode">Mode</label><select id="f-mode" name="mode">
+        {% for m in C.MODES %}<option value="{{ m }}" {% if opp.mode == m %}selected{% endif %}>{{ m|capitalize }}</option>{% endfor %}</select></div>
+      {{ field('location', 'Location', opp.location) }}
+      {{ field('effort_hours', 'Effort estimate (hours)', opp.effort_hours or '', type='number', errors=errors, hint='Leave empty to use the ' ~ opp.label ~ ' default (' ~ opp.effort_estimate() ~ ' h)', attrs='min="0" max="2000"') }}
+    </div>
+  {% endcall %}
+
+  {% for key, cls in classes.items() %}
+    {% if cls.extra_fields %}
+    <fieldset data-type-fields="{{ key }}" {% if opp.type != key %}hidden{% endif %} class="window" style="padding:1rem;border-style:solid">
+      <legend style="background:var(--win-title-bg);color:var(--win-title-fg);border:3px solid var(--border);padding:.4rem .6rem">{{ type_icon(key, 2) }} {{ C.TYPE_LABELS[key] }} details</legend>
+      <div class="form-grid">
+        {% for fkey, flabel in cls.extra_fields %}
+          {{ field('extra_' ~ fkey, flabel, opp.extra.get(fkey, '') if opp.type == key else '') }}
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
+  {% endfor %}
+
+  {% call window('Eligibility & skills', 'check') %}
+    <div class="form-grid">
+      {{ field('eligible_years', 'Eligible years', opp.eligible_years, hint='e.g. 2,3 (empty = any year)') }}
+      {{ field('eligible_branches', 'Eligible branches', opp.eligible_branches, hint='e.g. CSE,IT (empty = any)') }}
+      {{ field('eligible_colleges', 'Restricted to colleges', opp.eligible_colleges, hint='e.g. IIT,NIT (empty = any)') }}
+    </div>
+    {{ field('eligibility_text', 'Eligibility as written', opp.eligibility_text, type='textarea', attrs='rows="2" maxlength="500"') }}
+    {{ field('skills', 'Required skills', skills_text, hint='Format "Python:3, React:2" where 3 = must-have, 1 = nice-to-have', attrs='list="skill-list"') }}
+    {{ field('notes', 'Notes', opp.notes, type='textarea', attrs='rows="3"') }}
+    {% if not opp.id %}
+    <label class="check-row"><input class="px-check" type="checkbox" name="auto_plan" value="1" checked> Generate a back-plan from the deadline</label>
+    <label class="check-row mt-1"><input class="px-check" type="checkbox" name="auto_rounds" value="1"> Add one round per stage (edit dates later)</label>
+    {% endif %}
+  {% endcall %}
+
+  <div class="form-actions mt-2">
+    <button class="btn btn-primary">{{ icon('check') }} {{ 'Save quest' if opp.id else 'Accept quest (+10 XP)' }}</button>
+    <a class="btn btn-ghost" href="{{ url_for('quests.detail', opp_id=opp.id) if opp.id else url_for('main.dashboard') }}">Cancel</a>
+  </div>
+</form>
+<datalist id="skill-list">{% for name, _ in C.SKILL_CATALOG %}<option value="{{ name }}:2">{% endfor %}</datalist>
+{% endblock %}

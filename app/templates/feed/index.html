@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state, csrf %}
+{% block title %}Side Quests{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">Side Quests</h1>
+    <p class="page-sub">Opportunities shared by players{% if scope == 'college' and g.user.college %} at {{ g.user.college }}{% endif %}. Upvote the good ones.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('feed.new') }}">{{ icon('feed') }} Share one</a>
+</div>
+<form method="get" class="row mb-2" aria-label="Filter side quests">
+  <label class="sr-only" for="fd-type">Type</label>
+  <select id="fd-type" name="type" data-autosubmit style="width:auto"><option value="">All types</option>
+    {% for t in types %}<option value="{{ t }}" {% if args.get('type') == t %}selected{% endif %}>{{ C.TYPE_LABELS[t] }}</option>{% endfor %}</select>
+  <label class="sr-only" for="fd-scope">Scope</label>
+  <select id="fd-scope" name="scope" data-autosubmit style="width:auto">
+    <option value="college" {% if scope == 'college' %}selected{% endif %}>My college</option>
+    <option value="all" {% if scope == 'all' %}selected{% endif %}>All colleges</option></select>
+  <label class="sr-only" for="fd-sort">Sort</label>
+  <select id="fd-sort" name="sort" data-autosubmit style="width:auto">
+    <option value="top" {% if sort == 'top' %}selected{% endif %}>Top voted</option>
+    <option value="new" {% if sort == 'new' %}selected{% endif %}>Newest</option></select>
+  <noscript><button class="btn btn-sm">Filter</button></noscript>
+</form>
+{% if posts %}
+<div class="grid grid-3">
+  {% for p in posts %}
+  <article class="quest-card u-{{ urgency_bucket(p.deadline) }}">
+    <div class="row between"><span class="row" style="gap:.4rem">{{ type_icon(p.type, 2) }}<span class="small muted">{{ C.TYPE_LABELS[p.type] }}</span></span>
+      <form method="post" action="{{ url_for('feed.vote', post_id=p.id) }}" data-vote>{{ csrf() }}
+        <button class="btn btn-xs {{ 'btn-pink' if p.voted }}" aria-pressed="{{ 'true' if p.voted else 'false' }}" aria-label="Upvote {{ p.title }}">▲ <span data-votes>{{ p.votes }}</span></button></form></div>
+    <h3>{{ p.title }}</h3>
+    <p class="small mb-0">{{ p.description|truncate(140) }}</p>
+    <div class="meta"><span class="countdown"><span class="urgency-dot" aria-hidden="true"></span> {{ countdown(p.deadline) }}</span>{% if p.prize_text %}<span>{{ sprite('coin', 2) }} {{ p.prize_text }}</span>{% endif %}</div>
+    <div class="meta">{{ sprite('avatar', 1, variant=p.avatar_look) }} <a href="{{ url_for('profile.public', username=p.username) }}">{{ p.display_name or p.username }}</a>{% if p.college %} · {{ p.college }}{% endif %}</div>
+    <div class="row" style="gap:.4rem">
+      {% if p.adopted %}<span class="pill pill-green">✔ In your quests</span>{% else %}
+      <form method="post" action="{{ url_for('feed.adopt', post_id=p.id) }}">{{ csrf() }}<button class="btn btn-xs btn-primary">{{ icon('plus') }} Add to my quests</button></form>{% endif %}
+      {% if p.link %}<a class="btn btn-xs" href="{{ p.link }}" target="_blank" rel="noopener noreferrer">{{ icon('external') }} Link</a>{% endif %}
+      {% if p.user_id == g.user.id %}<form method="post" action="{{ url_for('feed.delete', post_id=p.id) }}" data-confirm="Remove this Side Quest from the feed?">{{ csrf() }}<button class="btn btn-xs btn-danger" aria-label="Delete">{{ icon('trash') }}</button></form>{% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+  {% call window('Quiet village', 'feed') %}
+    {% call empty_state('No Side Quests here yet', 'Be the first to share an opportunity with your college. Try "All colleges" too.', ('cat', 'mushroom')) %}
+      <a class="btn btn-primary" href="{{ url_for('feed.new') }}">Share one</a>{% if scope == 'college' %}<a class="btn" href="?scope=all">All colleges</a>{% endif %}
+    {% endcall %}
+  {% endcall %}
+{% endif %}
+{% endblock %}

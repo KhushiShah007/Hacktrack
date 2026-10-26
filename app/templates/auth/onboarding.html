@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, window %}
+{% block title %}Create your player{% endblock %}
+{% block content %}
+<h1 class="page-title">Create your player</h1>
+<p class="page-sub">Pick a look and tell us your skills. This powers skill-match, eligibility and your Hall of Fame.</p>
+<form method="post" data-validate>
+  {{ csrf() }}
+  {% call window('Character select', 'user') %}
+    {% include "auth/_profile_fields.html" %}
+    <div class="form-actions"><button class="btn btn-primary">Start adventure</button></div>
+  {% endcall %}
+</form>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state, csrf %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<div class="row between">
+  <h1 class="page-title">Messages</h1>
+  <div class="row">
+    <form method="post" action="{{ url_for('main.notifications_read') }}">{{ csrf() }}<button class="btn btn-sm">{{ icon('check') }} Mark all read</button></form>
+    <form method="post" action="{{ url_for('main.notifications_clear') }}" data-confirm="Delete all read messages?">{{ csrf() }}<button class="btn btn-sm btn-danger">{{ icon('trash') }} Clear read</button></form>
+  </div>
+</div>
+{% call window('Inbox', 'bell') %}
+  {% if rows %}
+  <ul class="checklist">
+    {% for n in rows %}
+    <li style="{{ 'background:color-mix(in srgb, var(--gold) 22%, transparent)' if not n.is_read }}">
+      {{ sprite({'reminder': 'heart', 'badge': 'star', 'level': 'trophy', 'party': 'cat'}.get(n.kind, 'scroll'), 2) }}
+      <span class="t">{% if n.link %}<a href="{{ n.link }}">{{ n.message }}</a>{% else %}{{ n.message }}{% endif %}</span>
+      <span class="due">{{ n.created_at|shortdt }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    {% call empty_state('No messages', 'Reminders arrive 7, 2 and 1 day before deadlines. Badges and party invites land here too.', ('cat',)) %}{% endcall %}
+  {% endif %}
+{% endcall %}
+{% endblock %}

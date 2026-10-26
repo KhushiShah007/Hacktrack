@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state, csrf %}
+{% block title %}Party{% endblock %}
+{% block content %}
+<h1 class="page-title">Party</h1>
+<p class="page-sub">Team up, split tasks per round and see who covers which skill.</p>
+<div class="grid grid-2" style="align-items:start">
+  {% call window('Your parties', 'party') %}
+    {% if teams %}
+    <ul class="checklist">
+      {% for t in teams %}
+      <li>
+        {{ sprite('heart' if t.my_status == 'active' else 'scroll', 2) }}
+        <span class="t"><a href="{{ url_for('party.detail', team_id=t.id) }}"><strong>{{ t.name }}</strong></a>
+          {% if t.my_status == 'invited' %}<span class="pill pill-pink">Invite waiting</span>{% endif %}<br>
+          <span class="small muted">{{ t.quest_title or 'No quest linked' }} · {{ t.members }} member{{ 's' if t.members != 1 }} · {{ t.open_tasks }} open task{{ 's' if t.open_tasks != 1 }}</span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      {% call empty_state('Solo for now', 'Form a party for a hackathon and invite friends by username.', ('avatar', 'cat', 'raccoon')) %}{% endcall %}
+    {% endif %}
+  {% endcall %}
+  {% call window('Form a party', 'plus') %}
+    <form method="post" action="{{ url_for('party.create') }}">
+      {{ csrf() }}
+      <div class="field"><label for="p-name">Party name</label><input id="p-name" name="name" required minlength="2" maxlength="60" placeholder="Pixel Pirates"></div>
+      <div class="field"><label for="p-quest">For quest (optional)</label>
+        <select id="p-quest" name="opportunity_id"><option value="">None</option>
+          {% for q in quests %}<option value="{{ q.id }}">{{ q.title }}</option>{% endfor %}</select></div>
+      <button class="btn btn-primary">{{ icon('party') }} Form party (+20 XP)</button>
+    </form>
+  {% endcall %}
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state %}
+{% block title %}Clash Detector{% endblock %}
+{% block content %}
+<h1 class="page-title">Clash Detector</h1>
+<p class="page-sub">Weeks with 3+ deadlines or 6+ milestones in the next 10 weeks, with what to start early or skip.</p>
+<div class="grid grid-3">
+  <div class="stat">{{ sprite('heart', 3) }}<span><span class="num">{{ hud.hp if hud else 100 }}</span><br><span class="lbl">HP this week</span></span></div>
+  <div class="stat">{{ sprite('pin', 3) }}<span><span class="num">{{ load.deadlines }}</span><br><span class="lbl">Deadlines in 7 days</span></span></div>
+  <div class="stat">{{ sprite('scroll', 3) }}<span><span class="num">{{ load.milestones }}</span><br><span class="lbl">Milestones in 7 days</span></span></div>
+</div>
+<div class="mt-3">
+{% for c in clashes %}
+  <section class="window clash {{ c.severity }}" aria-label="Clash week {{ c.week_label }}">
+    <div class="titlebar"><span class="title">{{ icon('warning') }} Week of {{ c.week_label }} · {{ c.severity|upper }}</span></div>
+    <div class="window-body">
+      <div class="grid grid-2">
+        <div>
+          <h4>{{ c.deadlines|length }} deadlines{% if c.milestone_count %} + {{ c.milestone_count }} milestones{% endif %}</h4>
+          <ul class="checklist">
+            {% for e in c.deadlines %}<li><span class="tag">{{ e.kind }}</span><a class="t" href="{{ url_for('quests.detail', opp_id=e.opp_id) }}">{{ e.title }}</a><span class="due">{{ e.when|shortdt }} · P{{ e.priority }}</span></li>{% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h4>Strategy</h4>
+          <ul>{% for r in c.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+    </div>
+  </section>
+{% else %}
+  {% call window('All clear', 'check') %}
+    {% call empty_state('No clashes ahead', 'No week in the next 10 has 3+ deadlines. Your HP bar stays full.', ('heart', 'avatar', 'sunflower')) %}{% endcall %}
+  {% endcall %}
+{% endfor %}
+</div>
+{% endblock %}

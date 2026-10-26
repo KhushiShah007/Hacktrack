@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, window, field %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h1 class="page-title">Settings</h1>
+<div class="grid" style="grid-template-columns:minmax(0,1fr)">
+<form method="post" data-validate>
+  {{ csrf() }}
+  {% call window('Profile', 'user') %}
+    {% include "auth/_profile_fields.html" %}
+    {{ field('bio', 'Bio (shown on your Hall of Fame)', request.form.get('bio', g.user.bio), type='textarea', attrs='maxlength="500" rows="3"') }}
+  {% endcall %}
+  {% call window('Privacy & reminders', 'bell') %}
+    <label class="check-row"><input class="px-toggle" type="checkbox" name="is_public" value="1" {% if g.user.is_public %}checked{% endif %}> Public Hall of Fame at /u/{{ g.user.username }}</label>
+    <label class="check-row mt-1"><input class="px-toggle" type="checkbox" name="email_reminders" value="1" {% if g.user.email_reminders %}checked{% endif %}> Email reminders (needs SMTP_* env vars on the server)</label>
+    <div class="mt-2">{{ field('telegram_chat_id', 'Telegram chat ID (optional)', g.user.telegram_chat_id, hint='Needs TELEGRAM_BOT_TOKEN on the server. Leave empty for in-app only.') }}</div>
+  {% endcall %}
+  <div class="form-actions mt-2"><button class="btn btn-primary">Save settings</button></div>
+</form>
+
+{% call window('Display', 'eye') %}
+  <label class="check-row"><input class="px-toggle" type="checkbox" data-simple-check> Simple mode (no pixel effects or animations, system font)</label>
+  <label class="check-row mt-1"><input class="px-toggle" type="checkbox" data-crt-toggle> CRT scanline overlay</label>
+  <div class="mt-2"><button class="btn btn-sm" type="button" data-theme-toggle>Switch day / night</button></div>
+{% endcall %}
+
+{% call window('API token (desktop widget)', 'bolt', id='api') %}
+  <p>The Tkinter widget and the read-only REST API use this token. Keep it secret.</p>
+  <div class="row"><input id="api-token" readonly value="{{ g.user.api_token or '' }}" aria-label="API token" style="flex:1;min-width:200px">
+    <button class="btn btn-sm" type="button" data-copy="#api-token">{{ icon('copy') }} Copy</button></div>
+  <pre class="out mt-1">curl -H "Authorization: Bearer &lt;token&gt;" {{ request.url_root }}api/opportunities?upcoming=1</pre>
+  <form method="post" action="{{ url_for('auth.regenerate_token') }}" data-confirm="The old token will stop working immediately." data-confirm-ok="Regenerate">
+    {{ csrf() }}<button class="btn btn-sm btn-danger">Regenerate token</button>
+  </form>
+{% endcall %}
+
+{% call window('Password', 'gear', id='security') %}
+  <form method="post" action="{{ url_for('auth.change_password') }}" class="form-grid">
+    {{ csrf() }}
+    {{ field('current_password', 'Current password', '', type='password', required=true, attrs='autocomplete="current-password"') }}
+    {{ field('new_password', 'New password', '', type='password', required=true, hint='8+ characters', attrs='autocomplete="new-password" minlength="8"') }}
+    <div class="form-actions"><button class="btn">Change password</button></div>
+  </form>
+{% endcall %}
+
+{% call window('Data', 'download') %}
+  <div class="row">
+    <a class="btn btn-sm" href="{{ url_for('quests.export', fmt='csv') }}">{{ icon('download') }} Export CSV</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.export', fmt='json') }}">{{ icon('download') }} Export JSON</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.import_view') }}">{{ icon('upload') }} Import</a>
+    <a class="btn btn-sm" href="{{ url_for('main.calendar_all') }}">{{ icon('calendar') }} Calendar (.ics)</a>
+  </div>
+{% endcall %}
+</div>
+{% endblock %}

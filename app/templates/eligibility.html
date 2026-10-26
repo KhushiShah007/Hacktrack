@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state %}
+{% block title %}Eligibility{% endblock %}
+{% block content %}
+<h1 class="page-title">Eligibility check</h1>
+<p class="page-sub">Your profile: year {{ g.user.year or '?' }}, {{ g.user.branch or 'branch not set' }}, {{ g.user.college or 'college not set' }}. <a href="{{ url_for('auth.settings') }}">Edit</a></p>
+{% call window(rows|length ~ ' open quests checked', 'check') %}
+  {% if rows %}
+  <div class="table-wrap"><table class="px-table">
+    <thead><tr><th>Quest</th><th>Verdict</th><th>Why</th></tr></thead>
+    <tbody>
+      {% for o, verdict, reason in rows %}
+      <tr>
+        <td><a href="{{ url_for('quests.detail', opp_id=o.id) }}">{{ o.title }}</a></td>
+        <td class="nowrap"><span class="pill {{ 'pill-green' if verdict == 'Eligible' else ('pill-pink' if verdict == 'Not eligible' else '') }}">{{ '✔' if verdict == 'Eligible' else ('✖' if verdict == 'Not eligible' else '?') }} {{ verdict }}</span></td>
+        <td>{{ reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    {% call empty_state('Nothing to check', 'Add open quests with eligibility rules (years, branches, colleges).') %}{% endcall %}
+  {% endif %}
+{% endcall %}
+{% endblock %}

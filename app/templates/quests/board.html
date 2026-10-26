@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, empty_state %}
+{% block title %}Quest board{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">Quest board</h1>
+    <p class="page-sub">Drag cards between columns, or use each card's status menu (keyboard friendly).</p>
+  </div>
+  <form method="get" class="row">
+    <label class="sr-only" for="b-type">Type</label>
+    <select id="b-type" name="type" data-autosubmit style="width:auto"><option value="">All types</option>
+      {% for t in types %}<option value="{{ t }}" {% if args.get('type') == t %}selected{% endif %}>{{ C.TYPE_LABELS[t] }}</option>{% endfor %}</select>
+    <label class="sr-only" for="b-q">Search</label>
+    <input id="b-q" type="search" name="q" value="{{ args.get('q','') }}" placeholder="Search..." data-search style="width:180px">
+    <a class="btn btn-sm" href="{{ url_for('quests.index') }}">{{ icon('list') }} List view</a>
+  </form>
+</div>
+
+<div class="kanban" data-kanban>
+  {% for status, cards in columns.items() %}
+  <section class="kanban-col" aria-labelledby="col-{{ status }}">
+    <div class="titlebar"><span class="title" id="col-{{ status }}">{{ C.STATUS_LABELS[status] }}</span><span class="pill" style="color:inherit;font-size:1rem" data-count>{{ cards|length }}</span></div>
+    <div class="kanban-list" data-status="{{ status }}" aria-label="{{ C.STATUS_LABELS[status] }} column">
+      {% for o in cards %}
+      <article class="quest-card kanban-card u-{{ o.urgency() }}" draggable="true" data-id="{{ o.id }}" aria-label="{{ o.title }}">
+        <div class="row" style="gap:.4rem">{{ type_icon(o.type, 2) }}<span class="small muted">{{ o.label }}</span></div>
+        <h3><a href="{{ url_for('quests.detail', opp_id=o.id) }}">{{ o.title }}</a></h3>
+        <span class="countdown"><span class="urgency-dot" aria-hidden="true"></span> {{ o.countdown() }}</span>
+        <form method="post" action="{{ url_for('quests.set_status', opp_id=o.id) }}">{{ csrf() }}
+          <label class="sr-only" for="ks-{{ o.id }}">Move {{ o.title }} to</label>
+          <select id="ks-{{ o.id }}" name="status" data-board-select>
+            {% for s in columns.keys() %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ C.STATUS_LABELS[s] }}</option>{% endfor %}
+          </select><noscript><button class="btn btn-xs">Move</button></noscript>
+        </form>
+      </article>
+      {% else %}
+      <p class="kanban-empty" data-empty>Drop a quest here</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/board.js') }}"></script>{% endblock %}

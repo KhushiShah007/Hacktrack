@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% block title %}Create your player{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:2.5rem auto 0">
+  <p class="center"><a href="{{ url_for('main.landing') }}" class="brand" style="justify-content:center;color:var(--heading-fg)">{{ sprite('pin', 3) }} HACK<b>TRACK</b></a></p>
+  <section class="window">
+    <div class="titlebar"><span class="title">{{ icon('plus') }} New game</span><span class="ctrls" aria-hidden="true"><span>_</span><span>x</span></span></div>
+    <div class="window-body">
+      <p>Pick a player name and password. Next you'll design your character.</p>
+      <form method="post" data-validate novalidate>
+        {{ csrf() }}
+        {{ field('username', 'Player name (username)', form.get('username', ''), errors=errors, required=true, hint='3-30 letters, numbers or _', attrs='autocomplete="username" pattern="[A-Za-z0-9_]{3,30}" minlength="3" maxlength="30"') }}
+        {{ field('email', 'Email', form.get('email', ''), type='email', errors=errors, required=true, attrs='autocomplete="email"') }}
+        <div class="form-grid">
+          {{ field('password', 'Password', '', type='password', errors=errors, required=true, hint='8+ characters', attrs='autocomplete="new-password" minlength="8"') }}
+          {{ field('confirm', 'Confirm password', '', type='password', errors=errors, required=true, attrs='autocomplete="new-password" minlength="8"') }}
+        </div>
+        <button class="btn btn-primary btn-block">Create player</button>
+      </form>
+      <p class="center mt-2">Already playing? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+    </div>
+  </section>
+</div>
+{% endblock %}

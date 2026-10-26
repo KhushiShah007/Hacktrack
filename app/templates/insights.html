@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, heatmap, empty_state %}
+{% block title %}Insights{% endblock %}
+{% block content %}
+<h1 class="page-title">Insights</h1>
+<p class="page-sub">Crunched with pandas and numpy. Charts by Chart.js, with matplotlib images as a fallback.</p>
+{% if data.empty %}
+  {% call window('Not enough data', 'chart') %}
+    {% call empty_state('No stats yet', 'Add a few quests and finish some milestones; this page fills itself.', ('coin', 'raccoon')) %}<a class="btn btn-primary" href="{{ url_for('quests.new') }}">Add a quest</a>{% endcall %}
+  {% endcall %}
+{% else %}
+<div class="grid grid-4">
+  <div class="stat">{{ sprite('pin', 3) }}<span><span class="num">{{ data.total }}</span><br><span class="lbl">Quests</span></span></div>
+  <div class="stat">{{ sprite('trophy', 3) }}<span><span class="num">{{ data.overall_success }}%</span><br><span class="lbl">Final or win rate</span></span></div>
+  <div class="stat">{{ sprite('flame', 3) }}<span><span class="num">{{ data.streak }}</span><br><span class="lbl">Day streak (best {{ data.longest_streak }})</span></span></div>
+  <div class="stat">{{ sprite('coin', 3) }}<span><span class="num">{{ data.prize_won|inr }}</span><br><span class="lbl">Prize value won</span></span></div>
+</div>
+
+{% call window('Guide says...', 'star', cls='mt-3') %}
+  <ul class="insight-list">{% for line in data.insights %}<li>{{ sprite('star', 2) }}<span>{{ line }}</span></li>{% endfor %}</ul>
+  <p class="small muted mt-1">Avg registration → submission: {{ data.avg_reg_to_sub if data.avg_reg_to_sub is not none else 'n/a' }} days (median {{ data.median_reg_to_sub if data.median_reg_to_sub is not none else 'n/a' }}). Best category: {{ data.best_type or 'not enough results yet' }}.</p>
+{% endcall %}
+
+<div class="grid grid-2 mt-3">
+  {% for name, title in [('types', 'Quests by type'), ('success', 'Success rate by type (%)')] %}
+  {% call window(title, 'chart') %}
+    <div class="chart-box" data-chart="{{ name }}">
+      <div class="skeleton skeleton-block" aria-label="Loading chart"></div>
+      <canvas hidden aria-label="{{ title }} chart" role="img"></canvas>
+      <noscript><img src="{{ url_for('main.insights_chart', name=name) }}" alt="{{ title }}"></noscript>
+    </div>
+  {% endcall %}
+  {% endfor %}
+</div>
+{% call window('Monthly activity', 'calendar', cls='mt-3') %}
+  <div class="chart-box" data-chart="monthly">
+    <div class="skeleton skeleton-block" aria-label="Loading chart"></div>
+    <canvas hidden aria-label="Monthly activity chart" role="img"></canvas>
+    <noscript><img src="{{ url_for('main.insights_chart', name='monthly') }}" alt="Monthly activity"></noscript>
+  </div>
+{% endcall %}
+{% call window('Activity heatmap: last 12 months', 'calendar', cls='mt-3') %}
+  {{ heatmap(heat) }}
+  <p class="small">{{ heat.total }} XP actions this year.</p>
+{% endcall %}
+<script type="application/json" id="insight-data">{{ data|tojson }}</script>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script src="{{ url_for('static', filename='js/insights.js') }}" defer></script>
+{% endblock %}

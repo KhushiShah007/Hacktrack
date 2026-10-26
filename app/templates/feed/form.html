@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, field, csrf, select %}
+{% block title %}Share a Side Quest{% endblock %}
+{% block content %}
+<h1 class="page-title">Share a Side Quest</h1>
+<div style="max-width:720px">
+<form method="post" data-validate novalidate>
+  {{ csrf() }}
+  {% call window('New post for ' ~ (g.user.college or 'everyone'), 'feed') %}
+    {{ field('title', 'Title', form.get('title', ''), errors=errors, required=true, attrs='maxlength="160"') }}
+    <div class="form-grid">
+      {{ select('type', 'Type', types, form.get('type', 'hackathon'), errors=errors, labels=C.TYPE_LABELS) }}
+      {{ field('deadline', 'Deadline', form.get('deadline', ''), type='datetime-local', errors=errors, required=true) }}
+      {{ field('prize_text', 'Prize / stipend', form.get('prize_text', '')) }}
+      {{ field('link', 'Link', form.get('link', ''), type='url', errors=errors, placeholder='https://...') }}
+    </div>
+    {{ field('description', 'Details', form.get('description', ''), type='textarea', attrs='rows="4" maxlength="1500"') }}
+    {{ field('tags', 'Tags', form.get('tags', ''), hint='comma separated') }}
+    <div class="form-actions"><button class="btn btn-primary">Post (+10 XP)</button><a class="btn btn-ghost" href="{{ url_for('feed.index') }}">Cancel</a></div>
+  {% endcall %}
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<h1 class="page-title">Inventory</h1>
+<p class="page-sub">Every repo, demo, deck and certificate across your quests.</p>
+{% call window(rows|length ~ ' items', 'chest') %}
+  {% if rows %}
+  <div class="table-wrap"><table class="px-table">
+    <thead><tr><th>Item</th><th>Category</th><th>Quest</th><th>Added</th><th></th></tr></thead>
+    <tbody>
+    {% for a in rows %}
+      <tr>
+        <td>{{ a.label }}{% if a.kind == 'file' %}<br><span class="small muted">{{ a.original_name }} · {{ (a.size_bytes / 1024)|round(1) }} KB</span>{% endif %}</td>
+        <td><span class="tag">{{ a.category }}</span></td>
+        <td><a href="{{ url_for('quests.detail', opp_id=a.opportunity_id) }}#inventory">{{ a.quest_title }}</a></td>
+        <td class="nowrap">{{ a.created_at|pretty }}</td>
+        <td>{% if a.kind == 'file' %}<a class="btn btn-xs" href="{{ url_for('quests.asset_file', asset_id=a.id) }}">{{ icon('download') }} Get</a>
+            {% else %}<a class="btn btn-xs" href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ icon('external') }} Open</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    {% call empty_state('Your bag is empty', 'Open any quest and store its GitHub repo, demo link, PPT or certificate in the Inventory section.', ('coin', 'door')) %}
+      <a class="btn" href="{{ url_for('quests.index') }}">Go to quests</a>
+    {% endcall %}
+  {% endif %}
+{% endcall %}
+{% endblock %}

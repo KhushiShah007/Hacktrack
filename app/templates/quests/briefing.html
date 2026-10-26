@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, window %}
+{% block title %}Mission Briefing{% endblock %}
+{% macro conf(f) %}<span class="conf conf-{{ f.confidence }}" title="Parser confidence: {{ f.confidence }}">{{ f.confidence }}</span>{% endmacro %}
+{% block content %}
+<h1 class="page-title">Mission Briefing</h1>
+<p class="page-sub">Paste a poster caption, WhatsApp forward or email. We'll read it and fill the quest for you.</p>
+
+<div class="grid grid-2 mt-1" style="align-items:start">
+  <div class="crt">
+    <div class="crt-screen">
+      <p class="cyan" style="font-family:var(--font-display);font-size:.55rem;margin-top:0">INCOMING TRANSMISSION...</p>
+      <form method="post" action="{{ url_for('quests.briefing') }}">
+        {{ csrf() }}
+        <label for="brief-text" class="cyan">Paste the message</label>
+        <textarea id="brief-text" name="text" rows="12" required placeholder="🚀 HackOverflow 3.0 is LIVE! 36-hour hackathon. Teams of 2-4. Prize pool ₹1,50,000. Register by 15th Nov 11:59 PM: https://hackoverflow.dev  Open to all B.Tech 2nd-4th year students." style="background:#0b0b2b;color:#e9e6ff;border-color:#4fd8ff">{{ text }}</textarea>
+        <div class="row mt-1">
+          <button class="btn btn-primary">{{ icon('bolt') }} Decode briefing</button>
+          <button class="btn btn-sm" type="button" data-sample>Try a sample</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if result %}
+  <form method="post" action="{{ url_for('quests.briefing_save') }}" data-validate>
+    {{ csrf() }}
+    <input type="hidden" name="description" value="{{ result.description.value }}">
+    {% call window('Decoded quest · ' ~ score ~ '% confidence', 'check') %}
+      <div class="bar gold mb-2" role="progressbar" aria-label="Overall confidence" aria-valuenow="{{ score }}" aria-valuemin="0" aria-valuemax="100" style="--pct: {{ score }}%"><i></i></div>
+      <p class="small">Check the fields marked <span class="conf conf-low">low</span> before saving. Everything is editable.</p>
+      <div class="field"><label for="b-title">Title {{ conf(result.title) }}</label><input id="b-title" name="title" value="{{ result.title.value }}" required maxlength="160"></div>
+      <div class="form-grid">
+        <div class="field"><label for="b-type">Type {{ conf(result.type) }}</label>
+          <select id="b-type" name="type">{% for t in types %}<option value="{{ t }}" {% if t == result.type.value %}selected{% endif %}>{{ C.TYPE_LABELS[t] }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="b-deadline">Deadline {{ conf(result.deadline) }}</label><input id="b-deadline" type="datetime-local" name="deadline" value="{{ result.deadline.value.replace(' ', 'T') }}" required></div>
+        <div class="field"><label for="b-org">Organiser {{ conf(result.organizer) }}</label><input id="b-org" name="organizer" value="{{ result.organizer.value }}"></div>
+        <div class="field"><label for="b-link">Link {{ conf(result.link) }}</label><input id="b-link" type="url" name="link" value="{{ result.link.value }}"></div>
+        <div class="field"><label for="b-prize">Prize {{ conf(result.prize_text) }}</label><input id="b-prize" name="prize_text" value="{{ result.prize_text.value }}"></div>
+        <div class="field"><label for="b-amount">Value (Rs)</label><input id="b-amount" type="number" min="0" name="prize_amount" value="{{ result.prize_amount.value|int }}"></div>
+        <div class="field"><label for="b-tmin">Team min {{ conf(result.team_min) }}</label><input id="b-tmin" type="number" min="1" name="team_min" value="{{ result.team_min.value }}"></div>
+        <div class="field"><label for="b-tmax">Team max</label><input id="b-tmax" type="number" min="1" name="team_max" value="{{ result.team_max.value }}"></div>
+        <div class="field"><label for="b-mode">Mode {{ conf(result.mode) }}</label>
+          <select id="b-mode" name="mode">{% for m in modes %}<option value="{{ m }}" {% if m == result.mode.value %}selected{% endif %}>{{ m|capitalize }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="b-years">Eligible years {{ conf(result.eligible_years) }}</label><input id="b-years" name="eligible_years" value="{{ result.eligible_years.value }}"></div>
+        <div class="field"><label for="b-branches">Eligible branches {{ conf(result.eligible_branches) }}</label><input id="b-branches" name="eligible_branches" value="{{ result.eligible_branches.value }}"></div>
+        <div class="field"><label for="b-skills">Skills {{ conf(result.skills) }}</label><input id="b-skills" name="skills" value="{{ result.skills.value|join(', ') }}"></div>
+      </div>
+      <div class="field"><label for="b-elig">Eligibility text {{ conf(result.eligibility_text) }}</label><textarea id="b-elig" name="eligibility_text" rows="2">{{ result.eligibility_text.value }}</textarea></div>
+      <input type="hidden" name="status" value="interested">
+      {% if result.rounds.value %}
+      <fieldset><legend>Other dates found (saved as rounds)</legend>
+        {% for r in result.rounds.value %}
+        <div class="form-grid">
+          <div class="field"><label for="rn{{ loop.index }}">Round name</label><input id="rn{{ loop.index }}" name="round_name" value="{{ r.name }}"></div>
+          <div class="field"><label for="rd{{ loop.index }}">Date</label><input id="rd{{ loop.index }}" type="datetime-local" name="round_deadline" value="{{ r.deadline.replace(' ', 'T') }}"></div>
+        </div>
+        {% endfor %}
+      </fieldset>
+      {% endif %}
+      {% if result.other_links.value %}<p class="small">Other links: {% for l in result.other_links.value %}<a href="{{ l }}" target="_blank" rel="noopener noreferrer">{{ l }}</a> {% endfor %}</p>{% endif %}
+      <div class="form-actions"><button class="btn btn-primary">{{ icon('check') }} Accept mission (+10 XP)</button></div>
+    {% endcall %}
+  </form>
+  {% else %}
+  {% call window('How decoding works', 'bolt') %}
+    <ul>
+      <li><strong>Dates:</strong> regex finds date-like text, <code>dateutil</code> parses it fuzzily; lines with "deadline / last date / register by" win.</li>
+      <li><strong>Type:</strong> keyword scores (hackathon, internship, stipend, scholarship...).</li>
+      <li><strong>Prize:</strong> ₹ / Rs / INR / $ amounts with k, lakh and crore.</li>
+      <li><strong>Team:</strong> "teams of 2-4", "up to 4 members", "solo".</li>
+      <li><strong>Eligibility:</strong> year and branch mentions.</li>
+    </ul>
+    <p>Each field gets a <span class="conf conf-high">high</span> <span class="conf conf-medium">medium</span> <span class="conf conf-low">low</span> confidence tag.</p>
+  {% endcall %}
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var samples = [
+    "📢 HackOverflow 3.0 is LIVE!\n36-hour national hackathon by IEEE Student Branch.\nTeams of 2-4 members. Prize pool ₹1,50,000 + internships.\nRegistration deadline: 15th November, 11:59 PM\nPPT round results: 20 Nov\nOffline at Main Campus.\nOpen to all B.Tech 2nd to 4th year students.\nRegister: https://hackoverflow.example.dev",
+    "Hi all! Zeta Labs is hiring Summer Interns (Backend, Python/Flask, SQL).\nStipend: Rs 30,000/month. Work from home.\nApply by 30 Dec 2026: https://forms.gle/zeta-intern\nOnly 3rd year CSE/IT students eligible.",
+    "Reliance Foundation Scholarship 2026 for first-year UG students. Amount: ₹2 lakh. Last date to apply: 10/12/2026. Apply at www.scholarships.example.org"
+  ];
+  var btn = document.querySelector("[data-sample]");
+  btn && btn.addEventListener("click", function () {
+    var ta = document.getElementById("brief-text");
+    ta.value = samples[Math.floor(Math.random() * samples.length)];
+    ta.focus();
+  });
+})();
+</script>
+{% endblock %}

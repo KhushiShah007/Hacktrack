@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% set bare = true %}
+{% block title %}{{ title }}{% endblock %}
+{% block main_class %}{% endblock %}
+{% block content %}
+<div class="gameover">
+  <div>
+    {{ sprite('door', 7) }}
+    <h1 style="font-size:clamp(1.2rem,6vw,2.4rem)">{{ title|upper }}</h1>
+    <p>{{ code }}: {{ message }}</p>
+    <a class="btn btn-start" href="javascript:history.back()">Go back</a>
+  </div>
+</div>
+{% endblock %}

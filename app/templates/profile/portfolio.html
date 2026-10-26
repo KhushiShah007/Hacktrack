@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, empty_state %}
+{% block title %}Portfolio generator{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">Hall of Fame builder</h1>
+    <p class="page-sub">{{ p.count }} finished quests · {{ p.wins }} wins · {{ p.finals }} finals. Generated from your history and Training Log.</p>
+  </div>
+  <div class="row">
+    <a class="btn btn-sm" href="{{ url_for('profile.portfolio_download', fmt='md') }}">{{ icon('download') }} .md</a>
+    <a class="btn btn-sm" href="{{ url_for('profile.portfolio_download', fmt='txt') }}">{{ icon('download') }} .txt</a>
+  </div>
+</div>
+{% if not p.count %}
+  {% call window('Nothing to show off yet', 'star') %}
+    {% call empty_state('Your Hall of Fame is empty', 'Mark quests as Submitted, Shortlisted or Won and they turn into LinkedIn-ready achievements here.', ('trophy', 'avatar')) %}
+      <a class="btn btn-primary" href="{{ url_for('quests.board') }}">Open quest board</a>
+    {% endcall %}
+  {% endcall %}
+{% else %}
+<div class="grid grid-2">
+  {% call window('About blurb', 'user') %}
+    <textarea id="about" rows="6" aria-label="About blurb">{{ p.about }}</textarea>
+    <button class="btn btn-sm mt-1" type="button" data-copy="#about">{{ icon('copy') }} Copy</button>
+  {% endcall %}
+  {% call window('LinkedIn achievements', 'star') %}
+    <textarea id="linkedin" rows="10" aria-label="LinkedIn achievement bullets">{{ p.linkedin }}</textarea>
+    <button class="btn btn-sm mt-1" type="button" data-copy="#linkedin">{{ icon('copy') }} Copy all</button>
+  {% endcall %}
+</div>
+{% call window('Resume section: Hackathons and Projects (Markdown)', 'list', cls='mt-3') %}
+  <textarea id="resume" rows="14" aria-label="Resume section">{{ p.resume_md }}</textarea>
+  <div class="row mt-1"><button class="btn btn-sm" type="button" data-copy="#resume">{{ icon('copy') }} Copy</button>
+    <a class="btn btn-sm" href="{{ url_for('profile.public', username=g.user.username) }}">{{ icon('user') }} View public Hall of Fame</a></div>
+{% endcall %}
+{% endif %}
+{% endblock %}

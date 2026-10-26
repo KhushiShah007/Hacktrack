@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, quest_card, empty_state, csrf %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">Level {{ hud.level if hud else 1 }}: {{ g.user.name }}</h1>
+    <p class="page-sub">{{ stats.open or 0 }} open quests · {{ stats.submitted or 0 }} submitted · {{ stats.won or 0 }} won</p>
+  </div>
+  <div class="row">
+    <a class="btn btn-pink" href="{{ url_for('quests.briefing') }}">{{ icon('bolt') }} Paste briefing</a>
+    <a class="btn btn-primary" href="{{ url_for('quests.new') }}">{{ icon('plus') }} New quest</a>
+  </div>
+</div>
+
+{% if total == 0 %}
+  {% call window('Your world is empty', 'map') %}
+    {% call empty_state('No quests yet, adventurer!', 'Add your first hackathon, internship or scholarship, paste a WhatsApp forward into Mission Briefing, or load 31 realistic sample quests to explore every feature.', ('avatar', 'raccoon', 'sunflower')) %}
+      <a class="btn btn-primary" href="{{ url_for('quests.new') }}">{{ icon('plus') }} Add a quest</a>
+      <a class="btn btn-pink" href="{{ url_for('quests.briefing') }}">{{ icon('bolt') }} Paste a briefing</a>
+      <form method="post" action="{{ url_for('main.load_sample') }}">{{ csrf() }}<button class="btn btn-gold">{{ icon('download') }} Load sample data</button></form>
+    {% endcall %}
+  {% endcall %}
+{% else %}
+
+<div class="grid grid-2 mt-2">
+  {% call window('Do this first', 'star', cls='top5') %}
+    {% if top %}
+    <ol>
+      {% for o, score, br in top %}
+      <li>
+        <div style="min-width:0">
+          <a href="{{ url_for('quests.detail', opp_id=o.id) }}"><strong>{{ o.title }}</strong></a><br>
+          <span class="small muted">{{ o.label }} · {{ o.countdown() }} · {{ o.status_label }}</span>
+        </div>
+        <span class="score-chip" tabindex="0" data-tip="Priority {{ score }}/100&#10;{{ breakdown(br)|replace(' | ', '&#10;') }}" aria-label="Priority {{ score }}. {{ breakdown(br) }}">{{ score }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <p class="small muted mt-1">Score = 35% urgency + 20% skill fit + 20% status + 15% prize + 10% effort. Hover a score for the maths.</p>
+    {% else %}
+      <p>Nothing urgent. Enjoy the calm, or pick up a Side Quest.</p>
+    {% endif %}
+  {% endcall %}
+
+  <div class="stack">
+    {% call window('Clash Detector', 'warning') %}
+      {% if clashes %}
+        {% for c in clashes %}
+          <p><strong>{{ c.week_label }}</strong>: {{ c.deadlines|length }} deadlines{% if c.milestone_count %}, {{ c.milestone_count }} milestones{% endif %}.</p>
+          <p class="small">{{ c.recommendations[0] }}</p>
+        {% endfor %}
+        <a class="btn btn-sm" href="{{ url_for('main.clashes') }}">See advice</a>
+      {% else %}
+        <p>No crowded weeks ahead. Your HP is safe.</p>
+      {% endif %}
+    {% endcall %}
+    <div class="grid grid-2">
+      <a class="stat" href="{{ url_for('main.world_map') }}" style="text-decoration:none">{{ sprite('pin', 3, variant='red') }}<span><span class="num">{{ stats.open or 0 }}</span><br><span class="lbl">Open on the map</span></span></a>
+      <a class="stat" href="{{ url_for('profile.badges') }}" style="text-decoration:none">{{ sprite('trophy', 3) }}<span><span class="num">{{ stats.won or 0 }}</span><br><span class="lbl">Wins</span></span></a>
+    </div>
+  </div>
+</div>
+
+<section class="window mt-3" aria-label="Filters">
+  <div class="titlebar"><span class="title">{{ icon('search') }} Deadline radar</span><span class="ctrls" aria-hidden="true"><span>_</span><span>x</span></span></div>
+  <div class="window-body">{% include "_filters.html" %}</div>
+</section>
+
+{% set labels = {'overdue': 'Overdue', 'urgent': 'Under 48 hours', 'week': 'This week', 'later': 'Later', 'done': 'Submitted & results'} %}
+{% for key in ['overdue', 'urgent', 'week', 'later', 'done'] %}
+  {% if buckets[key] %}
+  <div class="bucket-head u-{{ key }}"><span class="urgency-dot" aria-hidden="true"></span><h2>{{ labels[key] }}</h2><span class="count">{{ buckets[key]|length }}</span></div>
+  <div class="grid grid-3">
+    {% for o in buckets[key] %}{{ quest_card(o) }}{% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+{% if filtered and not (buckets.overdue or buckets.urgent or buckets.week or buckets.later or buckets.done) %}
+  {% call window('No matches', 'search', cls='mt-2') %}
+    {% call empty_state('No quests match these filters', 'Try a different search or reset the filters.', ('raccoon',)) %}<a class="btn" href="?">Reset filters</a>{% endcall %}
+  {% endcall %}
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% set bare = true %}
+{% block title %}Game Over{% endblock %}
+{% block main_class %}{% endblock %}
+{% block content %}
+<div class="gameover">
+  <div>
+    <div class="row" style="justify-content:center;align-items:flex-end">{{ sprite('cat', 5) }}{{ sprite('heart', 6) }}</div>
+    <h1>GAME OVER</h1>
+    <p>500: the server tripped on a pixel. It's been logged; your save is safe.</p>
+    <a class="btn btn-start" href="{{ url_for('main.landing') }}">Press START</a>
+  </div>
+</div>
+{% endblock %}

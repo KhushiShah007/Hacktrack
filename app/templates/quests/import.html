@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, window %}
+{% block title %}Import quests{% endblock %}
+{% block content %}
+<h1 class="page-title">Import / export</h1>
+<div class="grid grid-2">
+  {% call window('Import CSV or JSON', 'upload') %}
+    <form method="post" enctype="multipart/form-data">
+      {{ csrf() }}
+      <div class="field"><label for="imp">File (.csv or .json, max 5 MB)</label><input id="imp" type="file" name="file" accept=".csv,.json" required></div>
+      <button class="btn btn-primary">{{ icon('upload') }} Import</button>
+    </form>
+    <p class="small mt-2">Required columns: <code>title</code>, <code>type</code>, <code>deadline</code>. Optional: {{ fields[3:]|join(', ') }}.
+      Bad rows are skipped and listed below; nothing crashes. Every import is logged to <code>logs/hacktrack.log</code>.</p>
+  {% endcall %}
+  {% call window('Export everything', 'download') %}
+    <p>Back up your quests or move them to a spreadsheet.</p>
+    <div class="row">
+      <a class="btn" href="{{ url_for('quests.export', fmt='csv') }}">{{ icon('download') }} CSV</a>
+      <a class="btn" href="{{ url_for('quests.export', fmt='json') }}">{{ icon('download') }} JSON</a>
+      <a class="btn" href="{{ url_for('main.calendar_all') }}">{{ icon('calendar') }} All deadlines (.ics)</a>
+    </div>
+    <pre class="out mt-2">title,type,status,deadline,prize_amount
+HackCBS,hackathon,interested,2026-12-01 23:59,250000</pre>
+  {% endcall %}
+</div>
+{% if report %}
+{% call window('Validation report', 'check', cls='mt-3') %}
+  <p><strong>{{ report.created }}</strong> created · <strong>{{ report.errors|length }}</strong> rejected · {{ report.total }} rows read.</p>
+  {% if report.errors %}
+  <div class="table-wrap"><table class="px-table">
+    <thead><tr><th>Row</th><th>Problems</th></tr></thead>
+    <tbody>{% for row, msgs in report.errors %}<tr><td>{{ row }}</td><td>{{ msgs|join('; ') }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p>Every row passed validation. Clean save!</p>{% endif %}
+{% endcall %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% set bare = true %}
+{% block title %}Press Start{% endblock %}
+{% block main_class %}landing{% endblock %}
+{% block content %}
+<div class="landing">
+  <div class="landing-top">
+    <span>XP: QUEST TRACKER LEVEL 03</span>
+    <span class="p1">{{ sprite('heart', 2) }}<span class="bar hp" style="--pct: 80%"><i></i></span> PLAYER 01</span>
+  </div>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div aria-hidden="true">
+      <span class="float-cloud" style="top:30px;animation-duration:55s">{{ sprite('cloud_night', 5) }}</span>
+      <span class="float-cloud" style="top:260px;animation-duration:70s;animation-delay:-30s">{{ sprite('cloud_night', 4) }}</span>
+      <span style="position:absolute;left:4%;top:120px" class="twinkle">{{ sprite('star', 3) }}</span>
+      <span style="position:absolute;right:6%;top:90px;animation-delay:-1s" class="twinkle">{{ sprite('star', 2) }}</span>
+      <span style="position:absolute;right:16%;top:330px;animation-delay:-.5s" class="twinkle">{{ sprite('star', 3) }}</span>
+    </div>
+    <div class="hero-frame">
+      <p class="year">2026</p>
+      <h1 class="logo" id="hero-title">HACKTRACK</h1>
+      <p class="tagline">Every hackathon, internship and scholarship becomes a quest on your own pixel world map.</p>
+      <div class="row" style="justify-content:center">
+        {% if g.user %}
+          <a class="btn btn-start" href="{{ url_for('main.dashboard') }}">START</a>
+        {% else %}
+          <a class="btn btn-start" href="{{ url_for('auth.signup') }}">START</a>
+          <a class="btn btn-pink" href="{{ url_for('auth.login', demo=1) }}">Play the demo</a>
+        {% endif %}
+      </div>
+      <p class="press">PRESS START BUTTON</p>
+    </div>
+    <div class="hero-ground" aria-hidden="true">
+      <span class="walker bob">{{ sprite('avatar', 6, variant='coder') }}</span>
+      <span class="cat">{{ sprite('cat', 4) }}</span>
+      <span class="tree">{{ sprite('pine2', 7) }}</span>
+    </div>
+  </section>
+  <div class="ground-strip" aria-hidden="true"></div>
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      {% for _ in range(2) %}<span>Quests ★ Quest Map ★ Party ★ Mission Briefing ★ Hall of Fame ★ Training Log ★ Side Quests ★</span>{% endfor %}
+    </div>
+  </div>
+
+  <section class="landing-section" aria-labelledby="lvl1">
+    <div class="grid grid-2" style="align-items:center">
+      <div>
+        <h2 class="level-head" id="lvl1">Level<br>01</h2>
+        <p class="level-sub">Meet the game</p>
+        <p class="level-name">Plan backwards.<br>Win forwards.</p>
+        <p style="font-size:1.4rem;max-width:44ch">HackTrack ranks what to do first, plans milestones back from every deadline,
+          matches quests to your party's skills and turns your history into LinkedIn-ready achievements.</p>
+      </div>
+      <div class="console" aria-hidden="true">
+        <div class="shell">
+          <div class="screen">
+            <span style="position:absolute;left:10px;top:10px" class="twinkle">{{ sprite('star', 3) }}</span>
+            {{ sprite('avatar', 7, variant='coder') }}
+            <span style="position:absolute;right:12px;bottom:12px" class="spin">{{ sprite('coin', 3) }}</span>
+          </div>
+          <div class="pad"><span class="cross"></span><span class="ab"><i></i><i></i></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-windows">
+      {% for title, ico, items in [
+        ('Quest Map', 'map', ['Every quest is a pin on a winding road', 'Your avatar walks forward as you finish', 'Reach the trophy for bonus XP']),
+        ('Mission Briefing', 'bolt', ['Paste a WhatsApp forward or poster caption', 'Dates, prize, team size auto-filled', 'Confidence shown for every field']),
+        ('Strategy', 'chart', ['Priority score + "Do this first"', 'Clash Detector for crowded weeks', 'Eligibility checker and insights']),
+        ('Party + Glory', 'trophy', ['Team boards and skill-match', 'Badges, streaks, heatmap', 'Public Hall of Fame + portfolio'])] %}
+      <section class="window">
+        <div class="titlebar"><span class="title">{{ icon(ico) }} {{ title }}</span><span class="ctrls" aria-hidden="true"><span>_</span><span>x</span></span></div>
+        <div class="window-body"><ul>{% for i in items %}<li>{{ i }}</li>{% endfor %}</ul></div>
+      </section>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true" style="background:#ff3fa4;color:#fff">
+    <div class="marquee-track" style="animation-duration:30s">
+      {% for _ in range(2) %}<span>Missions ★ Deadlines ★ Rounds ★ Back-plans ★ XP ★ Streaks ★ Badges ★</span>{% endfor %}
+    </div>
+  </div>
+
+  <section class="landing-section mission" aria-labelledby="brief">
+    <div class="crt">
+      <div class="crt-screen">
+        <p class="cyan" style="font-family:var(--font-display);font-size:.6rem">HI..........<br>YOU'RE INVITED TO:</p>
+        <p class="glow" style="font-family:var(--font-display);font-size:clamp(.8rem,3vw,1.2rem);line-height:1.5" id="brief">MISSION BRIEFING:<br>YOUR NEXT WIN</p>
+        <p style="font-size:1.3rem">Paste any opportunity text. HackTrack reads the title, type, deadlines, prize, team size and eligibility, then builds a back-plan.</p>
+      </div>
+    </div>
+    <div class="stack">
+      <span class="pill">Friday, 23:59 deadline</span><br>
+      <span class="pill">Team of 2-4 · Online</span><br>
+      <span class="pill">Rs 2,50,000 prize pool</span>
+      <p style="font-size:1.35rem">Free, no API keys, works offline on your laptop. Built with Flask, SQLite, pandas and a lot of pixels.</p>
+      {% if not g.user %}<a class="btn btn-primary" href="{{ url_for('auth.signup') }}">Create your player</a>{% endif %}
+    </div>
+  </section>
+  <div class="ground-strip" aria-hidden="true" style="height:44px"></div>
+</div>
+{% endblock %}

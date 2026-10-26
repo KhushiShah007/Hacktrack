@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% set bare = true %}
+{% block title %}Game Over{% endblock %}
+{% block main_class %}{% endblock %}
+{% block content %}
+<div class="gameover">
+  <div>
+    <div class="row" style="justify-content:center;align-items:flex-end">{{ sprite('raccoon', 5, 'bob') }}{{ sprite('pin', 6, variant='missed') }}</div>
+    <h1>GAME OVER</h1>
+    <p>404: this level doesn't exist. The raccoon may have taken it.</p>
+    <a class="btn btn-start" href="{{ url_for('main.dashboard') if g.user else url_for('main.landing') }}">Press START</a>
+  </div>
+</div>
+{% endblock %}

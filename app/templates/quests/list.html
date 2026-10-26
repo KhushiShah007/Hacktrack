@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, status_badge, empty_state, csrf %}
+{% block title %}All quests{% endblock %}
+{% block content %}
+<div class="row between">
+  <h1 class="page-title">Quest log</h1>
+  <div class="row">
+    <a class="btn btn-sm" href="{{ url_for('quests.board') }}">{{ icon('board') }} Board view</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.import_view') }}">{{ icon('upload') }} Import</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.export', fmt='csv') }}">{{ icon('download') }} CSV</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.export', fmt='json') }}">{{ icon('download') }} JSON</a>
+    <a class="btn btn-sm btn-primary" href="{{ url_for('quests.new') }}">{{ icon('plus') }} New</a>
+  </div>
+</div>
+{% call window('Filters', 'search') %}{% include "_filters.html" %}{% endcall %}
+
+{% call window(opps|length ~ ' quests', 'list', cls='mt-2') %}
+  {% if opps %}
+  <div class="table-wrap">
+    <table class="px-table">
+      <caption class="sr-only">Quests with deadline, status and priority</caption>
+      <thead><tr><th scope="col">Quest</th><th scope="col">Type</th><th scope="col">Deadline</th><th scope="col">Status</th><th scope="col">Prize</th><th scope="col">Priority</th></tr></thead>
+      <tbody>
+      {% for o in opps %}
+        {% set sc = scores[o.id] %}
+        <tr class="u-{{ o.urgency() }}">
+          <td><span class="urgency-dot" aria-hidden="true"></span> <a href="{{ url_for('quests.detail', opp_id=o.id) }}">{{ o.title }}</a><br><span class="small muted">{{ o.organizer }}</span></td>
+          <td class="nowrap">{{ type_icon(o.type, 2) }} {{ o.label }}</td>
+          <td class="nowrap">{{ o.deadline|shortdt }}<br><span class="small muted">{{ o.countdown() }}</span></td>
+          <td>
+            <form method="post" action="{{ url_for('quests.set_status', opp_id=o.id) }}">{{ csrf() }}
+              <label class="sr-only" for="st-{{ o.id }}">Status of {{ o.title }}</label>
+              <select id="st-{{ o.id }}" name="status" data-autosubmit style="min-height:36px;font-size:1.05rem">
+                {% for s in statuses %}<option value="{{ s }}" {% if s == o.status %}selected{% endif %}>{{ C.STATUS_LABELS[s] }}</option>{% endfor %}
+              </select><noscript><button class="btn btn-xs">Set</button></noscript>
+            </form>
+          </td>
+          <td class="nowrap">{{ o.prize_text or '-' }}</td>
+          <td><span class="score-chip" tabindex="0" data-tip="{{ breakdown(sc[1])|replace(' | ', '&#10;') }}">{{ sc[0] }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% call empty_state('No quests here', 'Add one, or change the filters.') %}<a class="btn btn-primary" href="{{ url_for('quests.new') }}">New quest</a>{% endcall %}
+  {% endif %}
+{% endcall %}
+{% endblock %}

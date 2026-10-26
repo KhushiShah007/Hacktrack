@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window %}
+{% block title %}Badges & XP{% endblock %}
+{% block content %}
+<h1 class="page-title">Badges &amp; XP</h1>
+<div class="grid grid-2">
+  {% call window('Level ' ~ progress.level ~ ': ' ~ progress.title, 'trophy') %}
+    <div class="row">{{ sprite('avatar', 5, 'bob', variant=g.user.avatar_look) }}
+      <div style="flex:1;min-width:200px">
+        <p class="bar-label">{{ progress.xp }} XP · {{ progress.into }} / {{ progress.needed }} to level {{ progress.level + 1 }}</p>
+        <div class="bar xp" style="--pct: {{ progress.pct }}%" role="progressbar" aria-label="XP to next level" aria-valuenow="{{ progress.pct }}" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      </div>
+    </div>
+    <table class="px-table mt-2"><thead><tr><th>Level</th><th>XP needed</th><th>Title</th></tr></thead><tbody>
+      {% for lvl, need, title in levels if lvl in (1, 2, 3, 6, 10, 15) or lvl == progress.level %}
+      <tr {% if lvl == progress.level %}style="background:color-mix(in srgb, var(--gold) 35%, transparent)"{% endif %}><td>{{ lvl }}</td><td>{{ need }}</td><td>{{ title }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  {% endcall %}
+  {% call window('Where your XP came from', 'chart') %}
+    <table class="px-table"><thead><tr><th>Action</th><th>Times</th><th>XP</th></tr></thead><tbody>
+      {% for e in events %}<tr><td>{{ e.action|replace('_', ' ')|capitalize }}</td><td>{{ e.n }}</td><td>{{ e.pts }}</td></tr>{% else %}<tr><td colspan="3">No XP yet. Add a quest!</td></tr>{% endfor %}
+    </tbody></table>
+    <p class="small mt-1">XP rules: add quest 10 · milestone 15 · register 15 · round cleared 25 · submit 40 · finalist 50 · win 100 · journal 20 · trophy 150.</p>
+  {% endcall %}
+</div>
+{% call window('Badge shelf · ' ~ shelf|selectattr('unlocked')|list|length ~ ' / ' ~ shelf|length, 'star', cls='mt-3') %}
+  <div class="badge-shelf">
+    {% for b in shelf %}
+    <div class="badge-tile {{ '' if b.unlocked else 'locked' }}">
+      <div class="medal">{{ sprite(b.icon, 3) }}</div>
+      <h4>{{ b.name }}</h4>
+      <p>{{ b.description }}</p>
+      <p class="small muted">{{ ('Unlocked ' ~ (b.unlocked_at|pretty)) if b.unlocked else 'Locked' }}</p>
+    </div>
+    {% endfor %}
+  </div>
+{% endcall %}
+{% endblock %}

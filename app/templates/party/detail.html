@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, csrf, ring %}
+{% block title %}{{ team.name }}{% endblock %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1 class="page-title">{{ sprite('heart', 3) }} {{ team.name }}</h1>
+    <p class="page-sub">{% if quest %}Questing for <a href="{{ url_for('quests.detail', opp_id=quest.id) if quest.user_id == g.user.id else '#' }}">{{ quest.title }}</a> · due {{ quest.deadline|shortdt }}{% else %}No quest linked{% endif %}</p>
+  </div>
+  <form method="post" action="{{ url_for('party.leave', team_id=team.id) }}" data-confirm="{{ 'Disband this party for everyone? Tasks and log are deleted.' if team.owner_id == g.user.id else 'Leave this party?' }}">
+    {{ csrf() }}<button class="btn btn-sm btn-danger">{{ 'Disband party' if team.owner_id == g.user.id else 'Leave party' }}</button>
+  </form>
+</div>
+
+<div class="grid grid-2">
+  {% call window('Members', 'party') %}
+    <ul class="checklist">
+      {% for m in team.members %}
+      <li>{{ sprite('avatar', 2, variant=m.avatar_look) }}
+        <span class="t"><a href="{{ url_for('profile.public', username=m.username) }}">{{ m.name }}</a> <span class="small muted">@{{ m.username }} · {{ m.role }}</span>
+          {% if m.status == 'invited' %}<span class="pill">invited</span>{% endif %}<br>
+          <span class="small">{% for s, lvl in m.skills.items() %}{% if loop.index <= 4 %}<span class="tag">{{ s }} {{ lvl }}</span>{% endif %}{% endfor %}</span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('party.invite', team_id=team.id) }}" class="row mt-1">
+      {{ csrf() }}
+      <label class="sr-only" for="inv">Username to invite</label>
+      <input id="inv" name="username" placeholder="username" required style="flex:1;min-width:140px">
+      <button class="btn btn-sm">Invite</button>
+    </form>
+  {% endcall %}
+  {% call window('Team skill-match', 'star') %}
+    {% if match %}
+      <div class="row">{{ ring(match.score, 72, 'Team fit ' ~ match.score ~ '%') }}<p style="flex:1;min-width:150px">Team vector = best member per skill. {% if match.gaps %}<strong>Gaps:</strong> {{ match.gaps|join(', ') }}{% else %}No gaps!{% endif %}</p></div>
+      <table class="px-table mt-1"><thead><tr><th>Skill</th><th>Covered by</th><th>Level</th></tr></thead><tbody>
+        {% for a in match.assignments %}<tr><td>{{ a.skill }}</td><td>{{ a.member or 'Nobody yet' }}</td><td>{{ '★' * a.level if a.level else '-' }}</td></tr>{% endfor %}
+      </tbody></table>
+      <p class="small mt-1">Individual fit: {% for n, s in match.per_member.items() %}{{ n }} {{ s }}%{{ ', ' if not loop.last }}{% endfor %}</p>
+    {% else %}
+      <p>Link this party to a quest with required skills to see coverage.</p>
+    {% endif %}
+  {% endcall %}
+</div>
+
+<h2 class="page-title mt-3" style="font-size:.8rem">Task board</h2>
+<div class="kanban" data-task-board style="grid-auto-columns:minmax(240px,1fr)">
+  {% for status, tasks in columns.items() %}
+  <section class="kanban-col" aria-labelledby="tc-{{ status }}">
+    <div class="titlebar"><span class="title" id="tc-{{ status }}">{{ {'todo': 'To do', 'doing': 'Doing', 'done': 'Done'}[status] }}</span><span class="pill" style="color:inherit;font-size:1rem">{{ tasks|length }}</span></div>
+    <div class="kanban-list">
+      {% for t in tasks %}
+      <article class="quest-card {{ 'u-done' if status == 'done' else 'u-later' }}">
+        <strong>{{ t.title }}</strong>
+        <div class="meta">
+          {% if t.assignee %}<span>{{ sprite('avatar', 1, variant=t.avatar_look) }} {{ t.assignee_name or t.assignee }}</span>{% else %}<span>Unassigned</span>{% endif %}
+          {% if t.round_name %}<span class="tag">{{ t.round_name }}</span>{% endif %}
+          {% if t.due_date %}<span>{{ t.due_date|shortdt }}</span>{% endif %}
+        </div>
+        <div class="row" style="gap:.3rem">
+          <form method="post" action="{{ url_for('party.move_task', task_id=t.id) }}" class="row" style="gap:.3rem">{{ csrf() }}
+            <label class="sr-only" for="ts{{ t.id }}">Move task</label>
+            <select id="ts{{ t.id }}" name="status" data-autosubmit style="width:auto;min-height:32px;font-size:1rem">
+              {% for s in statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            </select>
+          </form>
+          <form method="post" action="{{ url_for('party.delete_task', task_id=t.id) }}" data-confirm="Delete task '{{ t.title }}'?">{{ csrf() }}<button class="btn btn-xs" aria-label="Delete task">{{ icon('trash') }}</button></form>
+        </div>
+      </article>
+      {% else %}<p class="kanban-empty">No tasks</p>{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<div class="grid grid-2 mt-2">
+  {% call window('Assign a task', 'plus') %}
+    <form method="post" action="{{ url_for('party.add_task', team_id=team.id) }}">
+      {{ csrf() }}
+      <div class="field"><label for="t-title">Task</label><input id="t-title" name="title" required maxlength="160" placeholder="Build login screen"></div>
+      <div class="form-grid">
+        <div class="field"><label for="t-who">Assign to</label><select id="t-who" name="assignee_id"><option value="">Unassigned</option>
+          {% for m in team.active_members %}<option value="{{ m.user_id }}">{{ m.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="t-round">Round</label><select id="t-round" name="round_id"><option value="">Any</option>
+          {% for r in rounds %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="t-due">Due</label><input id="t-due" name="due_date" type="datetime-local"></div>
+      </div>
+      <button class="btn btn-primary btn-sm">Add task</button>
+    </form>
+  {% endcall %}
+  {% call window('Activity log', 'book', cls='scrolly') %}
+    <ul class="checklist">{% for l in log %}<li><span class="t">{{ l.message }}</span><span class="due">{{ l.created_at|shortdt }}</span></li>{% else %}<li>No activity yet.</li>{% endfor %}</ul>
+  {% endcall %}
+</div>
+{% endblock %}

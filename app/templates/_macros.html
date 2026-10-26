@@ -1,0 +1,111 @@
+{% macro nav_link(endpoint, ico, label, hint='') -%}
+<a class="nav-link" href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
+  {{ icon(ico) }} {{ label }}{% if hint %}<span class="kbd-hint" aria-hidden="true">{{ hint }}</span>{% endif %}
+</a>
+{%- endmacro %}
+
+{% macro window(title, ico=None, cls='', id=None, label=None) -%}
+<section class="window {{ cls }}" {% if id %}id="{{ id }}"{% endif %} aria-label="{{ label or title|striptags }}">
+  <div class="titlebar"><span class="title">{% if ico %}{{ icon(ico) }}{% endif %}{{ title }}</span><span class="ctrls" aria-hidden="true"><span>_</span><span>□</span><span>x</span></span></div>
+  <div class="window-body">{{ caller() }}</div>
+</section>
+{%- endmacro %}
+
+{% macro status_badge(status, label=None) -%}
+<span class="status status-{{ status }}">{{ label or C.STATUS_LABELS.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}
+
+{% macro field(name, label, value='', type='text', errors={}, hint='', required=false, attrs='', placeholder='') -%}
+<div class="field {% if errors.get(name) %}has-error{% endif %}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}</label>
+  {% if type == 'textarea' %}
+  <textarea id="f-{{ name }}" name="{{ name }}" {% if required %}required{% endif %} placeholder="{{ placeholder }}" {% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% elif hint %}aria-describedby="h-{{ name }}"{% endif %} {{ attrs|safe }}>{{ value if value is not none else '' }}</textarea>
+  {% else %}
+  <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %} placeholder="{{ placeholder }}" {% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% elif hint %}aria-describedby="h-{{ name }}"{% endif %} {{ attrs|safe }}>
+  {% endif %}
+  {% if errors.get(name) %}<div class="error" id="e-{{ name }}" role="alert">{{ errors[name] }}</div>
+  {% elif hint %}<div class="hint" id="h-{{ name }}">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro select(name, label, options, selected='', errors={}, hint='', labels=None) -%}
+<div class="field {% if errors.get(name) %}has-error{% endif %}">
+  <label for="f-{{ name }}">{{ label }}</label>
+  <select id="f-{{ name }}" name="{{ name }}" {% if errors.get(name) %}aria-invalid="true"{% endif %}>
+    {% for opt in options %}<option value="{{ opt }}" {% if opt == selected %}selected{% endif %}>{{ labels[opt] if labels else opt|capitalize }}</option>{% endfor %}
+  </select>
+  {% if errors.get(name) %}<div class="error" role="alert">{{ errors[name] }}</div>{% elif hint %}<div class="hint">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro quest_card(o, score=None, breakdown=None, extra=True) -%}
+<article class="quest-card u-{{ o.urgency() }}">
+  <div class="row between" style="gap:.4rem">
+    <span class="row" style="gap:.4rem">{{ type_icon(o.type, 2) }}<span class="small muted">{{ o.label }}</span></span>
+    {% if score is not none %}<span class="score-chip" tabindex="0" data-tip="Priority {{ score }}/100&#10;{{ breakdown|replace(' | ', '&#10;') }}" aria-label="Priority score {{ score }}">{{ score }}</span>{% endif %}
+  </div>
+  <h3><a href="{{ url_for('quests.detail', opp_id=o.id) }}">{{ o.title }}</a></h3>
+  <div class="meta">
+    <span class="countdown"><span class="urgency-dot" aria-hidden="true"></span> {{ o.countdown() }}</span>
+    {{ status_badge(o.status, o.status_label) }}
+  </div>
+  {% if extra %}
+  <div class="meta">
+    {% if o.organizer %}<span>{{ o.organizer }}</span>{% endif %}
+    {% if o.prize_text %}<span>{{ sprite('coin', 2) }} {{ o.prize_text }}</span>{% endif %}
+    <span>{{ o.team_text() }}</span><span>{{ o.mode|capitalize }}</span>
+  </div>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+{% macro empty_state(title, text, sprites=('cat','mushroom','tree')) -%}
+<div class="empty">
+  <div class="scene" aria-hidden="true">{% for s in sprites %}{{ sprite(s, 4, 'bob' if loop.index == 1 else '') }}{% endfor %}</div>
+  <h3>{{ title }}</h3>
+  <p>{{ text }}</p>
+  {% if caller %}<div class="row" style="justify-content:center">{{ caller() }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro ring(pct, size=64, label='') -%}
+<div class="ring" style="--pct: {{ pct }}; --size: {{ size }}px" role="img" aria-label="{{ label or (pct ~ '% complete') }}"><span>{{ pct }}%</span></div>
+{%- endmacro %}
+
+{% macro heatmap(heat) -%}
+<div class="heatmap" role="img" aria-label="Activity heatmap: {{ heat.total }} actions in the last 12 months">
+  <div class="heat-months" aria-hidden="true">
+    {% for m in heat.months %}<span style="grid-column: {{ m.week + 1 }}">{{ m.label }}</span>{% endfor %}
+  </div>
+  <div class="heat-grid">
+    {% for week in heat.weeks %}{% for d in week %}<i class="l{{ d.level }} {{ 'future' if d.future }}" title="{{ d.date }}: {{ d.count }} action{{ '' if d.count == 1 else 's' }}"></i>{% endfor %}{% endfor %}
+  </div>
+</div>
+<div class="heat-legend" aria-hidden="true">Less <i style="background:var(--heat-0)"></i><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-4)"></i> More</div>
+{%- endmacro %}
+
+{% macro skills_editor(catalog, mine) -%}
+<div class="skill-grid">
+  {% for name in catalog %}
+  <div class="skill-row">
+    <span id="sk-{{ loop.index }}">{{ name }}</span>
+    <select name="skill__{{ name }}" aria-labelledby="sk-{{ loop.index }}">
+      <option value="">-</option>
+      {% for lvl in range(1, 6) %}<option value="{{ lvl }}" {% if mine.get(name) == lvl %}selected{% endif %}>{{ '★' * lvl }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro pin_legend() -%}
+<div class="map-legend" aria-label="Pin colours">
+  <span>{{ sprite('pin', 2, variant='red') }} Pending</span>
+  <span>{{ sprite('pin', 2, variant='green') }} Done</span>
+  <span>{{ sprite('pin', 2, variant='gold') }} Won</span>
+  <span>{{ sprite('pin', 2, variant='grey') }} Locked</span>
+  <span>{{ sprite('pin', 2, variant='missed') }} Missed</span>
+</div>
+{%- endmacro %}

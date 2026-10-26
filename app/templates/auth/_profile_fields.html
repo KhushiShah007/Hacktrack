@@ -1,0 +1,38 @@
+{% from "_macros.html" import field, skills_editor %}
+<fieldset>
+  <legend>Choose your look</legend>
+  <div class="look-picker" role="radiogroup" aria-label="Avatar look">
+    {% for key, label in looks.items() %}
+    <div class="look-card">
+      <input type="radio" name="avatar_look" id="look-{{ key }}" value="{{ key }}" {% if (request.form.get('avatar_look') or g.user.avatar_look) == key %}checked{% endif %}>
+      <label for="look-{{ key }}">{{ sprite('avatar', 5, variant=key) }}{{ label }}</label>
+    </div>
+    {% endfor %}
+  </div>
+</fieldset>
+<div class="form-grid">
+  {{ field('display_name', 'Player name', request.form.get('display_name', g.user.display_name), errors=errors, required=true, attrs='maxlength="40"') }}
+  {{ field('college', 'College', request.form.get('college', g.user.college), errors=errors, hint='Used for Side Quests and eligibility checks', attrs='list="colleges" maxlength="120"') }}
+  <div class="field {% if errors.get('year') %}has-error{% endif %}">
+    <label for="f-year">Year</label>
+    <select id="f-year" name="year">
+      <option value="">Not set</option>
+      {% for y in range(1, 6) %}<option value="{{ y }}" {% if (request.form.get('year') or g.user.year|string) == y|string %}selected{% endif %}>Year {{ y }}</option>{% endfor %}
+    </select>
+    {% if errors.get('year') %}<div class="error">{{ errors.year }}</div>{% endif %}
+  </div>
+  <div class="field">
+    <label for="f-branch">Branch</label>
+    <select id="f-branch" name="branch">
+      <option value="">Not set</option>
+      {% for b in branches %}<option {% if (request.form.get('branch') or g.user.branch) == b %}selected{% endif %}>{{ b }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+<datalist id="colleges"><option>Chitkara University</option><option>IIT Delhi</option><option>BITS Pilani</option><option>NIT Trichy</option><option>VIT Vellore</option><option>DTU</option></datalist>
+{{ field('interests', 'Interests', request.form.get('interests', g.user.interests), hint='e.g. AI, web3, design, fintech', attrs='maxlength="300"') }}
+<fieldset>
+  <legend>Skills (1 = learning, 5 = expert)</legend>
+  {{ skills_editor(catalog, mine) }}
+  <div class="field mt-1"><label for="f-extra">Other skills (comma separated)</label><input id="f-extra" name="extra_skills" placeholder="Rust, Unity, Arduino"></div>
+</fieldset>

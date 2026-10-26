@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" data-theme="day">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="description" content="HackTrack: track hackathons, internships and scholarships as quests on a pixel world map.">
+  <title>{% block title %}HackTrack{% endblock %} · HackTrack</title>
+  <script>
+    /* apply saved theme / simple mode before paint to avoid a flash */
+    (function () {
+      var d = document.documentElement, s = {};
+      try { s = { t: localStorage.getItem('ht-theme'), m: localStorage.getItem('ht-simple'), c: localStorage.getItem('ht-crt') }; } catch (e) {}
+      d.dataset.theme = s.t || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day');
+      if (s.m === '1') d.classList.add('simple');
+      if (s.c === '1') d.classList.add('crt-on');
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pixel.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='sprites/pin.svg') }}" type="image/svg+xml">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip-link btn btn-gold" href="#main">Skip to content</a>
+{% from "_macros.html" import nav_link %}
+{% if g.user and not bare %}
+<div class="app">
+  <nav class="sidebar" aria-label="Main">
+    <a class="brand" href="{{ url_for('main.dashboard') }}">{{ sprite('pin', 3, variant='red') }}<span>HACK<b>TRACK</b></span></a>
+    {{ nav_link('main.dashboard', 'home', 'Dashboard', 'g d') }}
+    {{ nav_link('main.world_map', 'map', 'Quest Map', 'm') }}
+    {{ nav_link('quests.index', 'list', 'All Quests') }}
+    {{ nav_link('quests.board', 'board', 'Quest Board', 'b') }}
+    {{ nav_link('quests.briefing', 'bolt', 'Mission Briefing') }}
+    {{ nav_link('quests.new', 'plus', 'New Quest', 'n') }}
+    <div class="nav-section">Strategy</div>
+    {{ nav_link('main.insights', 'chart', 'Insights') }}
+    {{ nav_link('main.clashes', 'warning', 'Clash Detector') }}
+    {{ nav_link('main.eligibility', 'check', 'Eligibility') }}
+    <div class="nav-section">Guild</div>
+    {{ nav_link('party.index', 'party', 'Party') }}
+    {{ nav_link('feed.index', 'feed', 'Side Quests') }}
+    {{ nav_link('journal.index', 'book', 'Training Log') }}
+    {{ nav_link('quests.inventory', 'chest', 'Inventory') }}
+    <div class="nav-section">Glory</div>
+    {{ nav_link('profile.portfolio_view', 'star', 'Portfolio') }}
+    {{ nav_link('profile.badges', 'trophy', 'Badges & XP') }}
+    <a class="nav-link" href="{{ url_for('profile.public', username=g.user.username) }}">{{ icon('user') }} Hall of Fame</a>
+    {{ nav_link('auth.settings', 'gear', 'Settings') }}
+    <form method="post" action="{{ url_for('auth.logout') }}" class="mt-1">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="nav-link link-btn" style="text-decoration:none;width:100%">{{ icon('logout') }} Save &amp; quit</button>
+    </form>
+  </nav>
+
+  <div class="app-col">
+    {% if hud %}
+    <header class="hud" aria-label="Player status">
+      <a class="who" href="{{ url_for('profile.badges') }}" title="Level, XP and badges">
+        {{ sprite('avatar', 2, variant=g.user.avatar_look) }}
+        <span class="name">{{ g.user.name }}</span>
+        <span class="lvl">LV{{ hud.level }} {{ hud.title|upper }}</span>
+      </a>
+      <div class="meter" title="{{ hud.into }} / {{ hud.needed }} XP to level {{ hud.level + 1 }}">
+        <span class="lbl">XP</span>
+        <div class="bar xp" role="progressbar" aria-label="Experience" aria-valuenow="{{ hud.pct }}" aria-valuemin="0" aria-valuemax="100" style="--pct: {{ hud.pct }}%"><i></i></div>
+      </div>
+      <a class="meter" href="{{ url_for('main.clashes') }}" title="Weekly deadline load: {{ hud.load.deadlines }} deadlines and {{ hud.load.milestones }} milestones in the next 7 days">
+        {{ sprite('heart', 2) }}
+        <span class="lbl">HP</span>
+        <div class="bar hp {{ 'critical' if hud.hp < 35 else ('low' if hud.hp < 65 else '') }}" role="progressbar" aria-label="Weekly deadline load health" aria-valuenow="{{ hud.hp }}" aria-valuemin="0" aria-valuemax="100" style="--pct: {{ hud.hp }}%"><i></i></div>
+      </a>
+      <span class="streak" title="{{ hud.streak }}-day streak">{{ sprite('flame', 2) }} {{ hud.streak }}</span>
+      <div class="hud-actions">
+        <button class="hud-btn" type="button" data-theme-toggle aria-label="Switch day / night world" title="Day / night">{{ icon('sun', cls='only-night') }}</button>
+        <button class="hud-btn" type="button" data-simple-toggle aria-pressed="false" aria-label="Toggle simple mode" title="Simple mode">{{ icon('eye') }}</button>
+        <div style="position:relative">
+          <button class="hud-btn" type="button" data-bell aria-haspopup="true" aria-expanded="false" aria-controls="notif-dropdown" aria-label="Notifications, {{ hud.unread }} unread">
+            {{ icon('bell') }}{% if hud.unread %}<span class="badge-count" data-bell-count>{{ hud.unread if hud.unread < 100 else '99+' }}</span>{% endif %}
+          </button>
+          <div class="dropdown window" id="notif-dropdown" hidden>
+            <div class="titlebar"><span class="title">{{ icon('bell') }} Messages</span><span class="ctrls"><span>_</span><span>x</span></span></div>
+            <div class="window-body tight" data-notif-list>
+              <div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div>
+            </div>
+            <div class="row between" style="padding:.5rem .6rem;border-top:3px solid var(--border)">
+              <a class="btn btn-xs" href="{{ url_for('main.notifications') }}">See all</a>
+              <button class="btn btn-xs btn-primary" type="button" data-mark-read>Mark all read</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    {% endif %}
+    <main id="main" class="main" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<nav class="dpad-bar" aria-label="Quick navigation">
+  <a class="dpad-key" href="{{ url_for('main.dashboard') }}" {% if request.endpoint == 'main.dashboard' %}aria-current="page"{% endif %}><span class="arrow">◀</span>{{ icon('home') }}Home</a>
+  <a class="dpad-key" href="{{ url_for('main.world_map') }}" {% if request.endpoint in ('main.world_map', 'quests.roadmap') %}aria-current="page"{% endif %}><span class="arrow">▲</span>{{ icon('map') }}Map</a>
+  <a class="dpad-a" href="{{ url_for('quests.new') }}" aria-label="New quest">{{ icon('plus') }}</a>
+  <a class="dpad-key" href="{{ url_for('quests.board') }}" {% if request.endpoint == 'quests.board' %}aria-current="page"{% endif %}><span class="arrow">▼</span>{{ icon('board') }}Board</a>
+  <button class="dpad-key" type="button" data-menu-toggle aria-expanded="false" aria-controls="menu-sheet"><span class="arrow">▶</span>{{ icon('list') }}Menu</button>
+</nav>
+<div class="menu-sheet window" id="menu-sheet" hidden>
+  <div class="titlebar"><span class="title">{{ icon('list') }} Menu</span><button class="btn btn-xs" type="button" data-menu-toggle aria-label="Close menu">{{ icon('close') }}</button></div>
+  <div class="window-body tight grid">
+    <a class="nav-link" href="{{ url_for('quests.index') }}">{{ icon('list') }} All Quests</a>
+    <a class="nav-link" href="{{ url_for('quests.briefing') }}">{{ icon('bolt') }} Briefing</a>
+    <a class="nav-link" href="{{ url_for('main.insights') }}">{{ icon('chart') }} Insights</a>
+    <a class="nav-link" href="{{ url_for('main.clashes') }}">{{ icon('warning') }} Clashes</a>
+    <a class="nav-link" href="{{ url_for('main.eligibility') }}">{{ icon('check') }} Eligibility</a>
+    <a class="nav-link" href="{{ url_for('party.index') }}">{{ icon('party') }} Party</a>
+    <a class="nav-link" href="{{ url_for('feed.index') }}">{{ icon('feed') }} Side Quests</a>
+    <a class="nav-link" href="{{ url_for('journal.index') }}">{{ icon('book') }} Training Log</a>
+    <a class="nav-link" href="{{ url_for('quests.inventory') }}">{{ icon('chest') }} Inventory</a>
+    <a class="nav-link" href="{{ url_for('profile.portfolio_view') }}">{{ icon('star') }} Portfolio</a>
+    <a class="nav-link" href="{{ url_for('profile.badges') }}">{{ icon('trophy') }} Badges</a>
+    <a class="nav-link" href="{{ url_for('profile.public', username=g.user.username) }}">{{ icon('user') }} Hall of Fame</a>
+    <a class="nav-link" href="{{ url_for('auth.settings') }}">{{ icon('gear') }} Settings</a>
+    <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="nav-link link-btn" style="text-decoration:none">{{ icon('logout') }} Quit</button></form>
+  </div>
+</div>
+{% else %}
+  <main id="main" class="{% block main_class %}main{% endblock %}" tabindex="-1">
+    {% block bare_content %}{{ self.content() }}{% endblock %}
+  </main>
+{% endif %}
+
+<div class="toasts" aria-live="polite" aria-atomic="false" data-toasts></div>
+
+<div class="modal-backdrop" data-modal hidden>
+  <div class="modal window" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="titlebar"><span class="title" id="modal-title">Are you sure?</span><button class="btn btn-xs" type="button" data-modal-close aria-label="Close dialog">{{ icon('close') }}</button></div>
+    <div class="window-body" data-modal-body></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" data-help hidden>
+  <div class="modal window" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="titlebar"><span class="title" id="help-title">{{ icon('star') }} Controls</span><button class="btn btn-xs" type="button" data-help-close aria-label="Close">{{ icon('close') }}</button></div>
+    <div class="window-body">
+      <table class="px-table">
+        <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
+        <tr><td><kbd>n</kbd></td><td>New quest</td></tr>
+        <tr><td><kbd>b</kbd></td><td>Quest board (Kanban)</td></tr>
+        <tr><td><kbd>m</kbd></td><td>Quest Map</td></tr>
+        <tr><td><kbd>p</kbd></td><td>Paste a Mission Briefing</td></tr>
+        <tr><td><kbd>g</kbd> then <kbd>d</kbd></td><td>Dashboard</td></tr>
+        <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close windows</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="flash-data">{{ get_flashed_messages(with_categories=true)|tojson }}</script>
+<script type="application/json" id="popup-data">{{ (popups or [])|tojson }}</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

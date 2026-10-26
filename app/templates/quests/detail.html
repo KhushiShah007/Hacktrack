@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, status_badge, csrf, ring, empty_state %}
+{% block title %}{{ opp.title }}{% endblock %}
+{% block content %}
+<nav class="small" aria-label="Breadcrumb"><a href="{{ url_for('quests.index') }}" style="color:var(--heading-fg)">Quests</a> <span style="color:var(--heading-fg)">/ {{ opp.label }}</span></nav>
+<div class="row between" style="align-items:flex-start">
+  <div style="min-width:0">
+    <h1 class="page-title">{{ type_icon(opp.type, 3) }} {{ opp.title }}</h1>
+    <p class="page-sub">{{ opp.describe() }}</p>
+  </div>
+  <div class="row">
+    <a class="btn btn-gold" href="{{ url_for('quests.roadmap', opp_id=opp.id) }}">{{ icon('map') }} Quest roadmap</a>
+    <a class="btn btn-sm" href="{{ url_for('quests.edit', opp_id=opp.id) }}">{{ icon('edit') }} Edit</a>
+  </div>
+</div>
+
+<div class="grid grid-2 mt-1">
+  {% call window('Quest status', 'star') %}
+    <div class="row between">
+      <div>
+        <div class="countdown" style="font-family:var(--font-display);font-size:.8rem">{{ opp.countdown() }}</div>
+        <div class="small muted">Deadline {{ opp.deadline|shortdt }}</div>
+      </div>
+      {{ status_badge(opp.status, opp.status_label) }}
+    </div>
+    <form method="post" action="{{ url_for('quests.set_status', opp_id=opp.id) }}" class="row mt-2">
+      {{ csrf() }}
+      <label class="sr-only" for="st">Move to status</label>
+      <select id="st" name="status" style="flex:1;min-width:160px">
+        {% for s in statuses %}<option value="{{ s }}" {% if s == opp.status %}selected{% endif %}>{{ C.STATUS_LABELS[s] }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-sm btn-primary">Update</button>
+    </form>
+    <div class="row mt-1">
+      <span class="pill">{{ opp.team_text() }}</span>
+      <span class="pill">{{ opp.mode|capitalize }}{% if opp.location %} · {{ opp.location }}{% endif %}</span>
+      {% if opp.prize_text %}<span class="pill pill-pink">{{ sprite('coin', 2) }} {{ opp.prize_text }}</span>{% endif %}
+      <span class="pill">~{{ opp.effort_estimate() }} h effort</span>
+    </div>
+    <p class="small mt-1">Stages for this type: {{ opp.stages()|join(' → ') }}</p>
+    {% if opp.extra %}<dl class="small" style="display:grid;grid-template-columns:auto 1fr;gap:.1rem .8rem;margin:0">
+      {% for k, v in opp.extra.items() if v %}<dt class="muted">{{ k|replace('_',' ')|capitalize }}</dt><dd style="margin:0">{{ v }}</dd>{% endfor %}
+    </dl>{% endif %}
+    {% if opp.link %}<p class="mt-1"><a href="{{ opp.link }}" target="_blank" rel="noopener noreferrer">{{ icon('external') }} Open official page</a></p>{% endif %}
+    {% if opp.tag_list %}<div>{% for t in opp.tag_list %}<span class="tag">#{{ t }}</span>{% endfor %}</div>{% endif %}
+  {% endcall %}
+
+  {% call window('Priority score', 'chart') %}
+    <div class="row" style="align-items:center">
+      {{ ring(score, 84, 'Priority ' ~ score ~ ' out of 100') }}
+      <p style="flex:1;min-width:180px">A transparent formula. Each factor is 0-1, multiplied by its weight.</p>
+    </div>
+    <table class="px-table mt-1">
+      <thead><tr><th>Factor</th><th>Value</th><th>Weight</th><th>Points</th></tr></thead>
+      <tbody>
+        {% for k, v in breakdown.items() %}<tr><td>{{ k|capitalize }}</td><td>{{ '%.2f'|format(v.factor) }}</td><td>{{ (v.weight * 100)|int }}%</td><td>{{ v.points }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <p class="small mt-1"><strong>Eligibility:</strong> <span class="pill {{ 'pill-green' if verdict == 'Eligible' else 'pill-pink' }}">{{ verdict }}</span> {{ reason }}</p>
+  {% endcall %}
+</div>
+
+<div class="grid grid-2 mt-3">
+  {% call window('Back-plan', 'calendar', id='plan') %}
+    {% if tree %}
+      <div class="row">
+        {{ ring(plan_progress, 72) }}
+        <div style="flex:1;min-width:150px"><strong data-plan-count>{{ plan_done }} / {{ plan_total }}</strong> milestones done.<br><span class="small muted">Tick a phase to tick all its steps. +15 XP each.</span></div>
+      </div>
+      <div class="mt-2" data-plan>
+        {% for phase in tree %}
+        <div class="phase">
+          <div class="phase-head">
+            <input class="px-check" type="checkbox" id="m{{ phase.id }}" data-milestone="{{ phase.id }}" {% if phase.done %}checked{% endif %} aria-label="Phase {{ phase.title }} complete">
+            <h4><label for="m{{ phase.id }}" style="font-size:inherit;margin:0;display:inline">{{ phase.title }}</label></h4>
+            <span class="small muted">{{ phase.due_date|shortdt }}</span>
+          </div>
+          <ul class="checklist">
+            {% for m in phase.children %}
+            <li class="{{ 'done' if m.done }}">
+              <input class="px-check" type="checkbox" id="m{{ m.id }}" data-milestone="{{ m.id }}" data-parent="{{ phase.id }}" {% if m.done %}checked{% endif %}>
+              <label class="t check-row" for="m{{ m.id }}" style="margin:0">{{ m.title }}</label>
+              <span class="due">{{ m.due_date|shortdt }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="row mt-1">
+        <form method="post" action="{{ url_for('quests.make_plan', opp_id=opp.id) }}" data-confirm="This replaces the current plan and its ticks." data-confirm-ok="Regenerate">{{ csrf() }}<button class="btn btn-sm">Regenerate</button></form>
+        <form method="post" action="{{ url_for('quests.clear_plan', opp_id=opp.id) }}" data-confirm="Delete every milestone of this plan?">{{ csrf() }}<button class="btn btn-sm btn-danger">{{ icon('trash') }} Clear</button></form>
+      </div>
+    {% else %}
+      {% call empty_state('No back-plan yet', 'Work backwards from the deadline: idea, research, build, PPT/report, rehearsal and buffer, dated for you.', ('scroll', 'avatar')) %}
+        <form method="post" action="{{ url_for('quests.make_plan', opp_id=opp.id) }}">{{ csrf() }}<button class="btn btn-primary">{{ icon('bolt') }} Generate back-plan</button></form>
+      {% endcall %}
+    {% endif %}
+  {% endcall %}
+
+  {% call window('Rounds timeline', 'list', id='rounds') %}
+    {% if rounds %}
+    <ol class="timeline">
+      {% for r in rounds %}
+      <li class="t-{{ r.status }}">
+        <div class="row between"><strong>{{ r.seq }}. {{ r.name }}</strong><span class="small muted">{{ r.deadline|shortdt }}</span></div>
+        <form method="post" action="{{ url_for('quests.update_round', round_id=r.id) }}" class="row mt-1" style="gap:.4rem">
+          {{ csrf() }}
+          <label class="sr-only" for="rs{{ r.id }}">Result of {{ r.name }}</label>
+          <select id="rs{{ r.id }}" name="status" style="width:auto;min-height:36px;font-size:1.05rem">
+            {% for s in round_statuses %}<option value="{{ s }}" {% if s == r.status %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
+          </select>
+          <label class="sr-only" for="rn{{ r.id }}">Note</label>
+          <input id="rn{{ r.id }}" name="result_note" value="{{ r.result_note }}" placeholder="Result note" style="flex:1;min-width:120px;min-height:36px;font-size:1.05rem">
+          <button class="btn btn-xs btn-primary">Save</button>
+        </form>
+        <form method="post" action="{{ url_for('quests.delete_round', round_id=r.id) }}" data-confirm="Remove the round '{{ r.name }}'?" class="mt-1">{{ csrf() }}<button class="btn btn-xs btn-ghost">{{ icon('trash') }} Remove</button></form>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+      <p>No rounds yet. Typical {{ opp.label }} rounds: {{ opp.stages()|join(', ') }}.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('quests.add_round', opp_id=opp.id) }}" class="form-grid mt-1">
+      {{ csrf() }}
+      <div class="field"><label for="rname">Round name</label><input id="rname" name="name" list="stage-list" required></div>
+      <div class="field"><label for="rdl">Round deadline</label><input id="rdl" name="deadline" type="datetime-local" required></div>
+      <div class="form-actions"><button class="btn btn-sm">{{ icon('plus') }} Add round</button></div>
+      <datalist id="stage-list">{% for s in opp.stages() %}<option value="{{ s }}">{% endfor %}</datalist>
+    </form>
+  {% endcall %}
+</div>
+
+<div class="grid grid-2 mt-3">
+  {% call window('Skill-match', 'party') %}
+    {% if required %}
+      <div class="row">{{ ring(fit.score, 72, 'Your fit ' ~ fit.score ~ '%') }}
+        <p style="flex:1;min-width:160px">Your fit: weighted Jaccard {{ fit.jaccard }}, coverage {{ fit.coverage }}.</p></div>
+      <p><strong>Required:</strong> {% for s, imp in required.items() %}<span class="tag">{{ s }} {{ '★' * imp }}</span>{% endfor %}</p>
+      {% if fit.gaps %}<p><strong>Your gaps:</strong> {{ fit.gaps|join(', ') }}</p>{% endif %}
+      {% if team_match %}
+        <hr>
+        <h4>Party "{{ team_match.team.name }}": {{ team_match.score }}% fit</h4>
+        <table class="px-table"><thead><tr><th>Skill</th><th>Best teammate</th><th>Level</th></tr></thead><tbody>
+          {% for a in team_match.assignments %}<tr><td>{{ a.skill }}</td><td>{{ a.member or 'GAP: recruit someone' }}</td><td>{{ '★' * a.level if a.level else '-' }}</td></tr>{% endfor %}
+        </tbody></table>
+      {% else %}
+        <p class="small mt-1"><a href="{{ url_for('party.index') }}">Form a party</a> for this quest to see who covers which skill.</p>
+      {% endif %}
+    {% else %}
+      <p>No required skills listed. <a href="{{ url_for('quests.edit', opp_id=opp.id) }}">Add some</a> (e.g. "Python:3, React:2") to unlock skill-match.</p>
+    {% endif %}
+  {% endcall %}
+
+  {% call window('Inventory', 'chest', id='inventory') %}
+    {% if assets %}
+    <div class="inv-grid">
+      {% for a in assets %}
+      <div class="inv-item">
+        <div class="thumb">
+          {% if a.kind == 'file' and a.mime.startswith('image/') %}<img src="{{ url_for('quests.asset_file', asset_id=a.id, inline=1) }}" alt="{{ a.label }}" loading="lazy">
+          {% elif a.kind == 'file' and a.mime == 'application/pdf' %}{{ sprite('scroll', 6) }}
+          {% elif a.category == 'github' %}{{ sprite('laptop', 6) }}
+          {% elif a.category == 'certificate' %}{{ sprite('trophy', 5) }}
+          {% else %}{{ sprite('coin', 6) }}{% endif %}
+        </div>
+        <span class="tag" style="align-self:flex-start">{{ a.category }}</span>
+        <span class="name" title="{{ a.label }}">{{ a.label }}</span>
+        <div class="row" style="gap:.3rem">
+          {% if a.kind == 'file' %}
+            {% if a.mime.startswith('image/') or a.mime == 'application/pdf' %}<a class="btn btn-xs" href="{{ url_for('quests.asset_file', asset_id=a.id, inline=1) }}" target="_blank" rel="noopener">{{ icon('eye') }} View</a>{% endif %}
+            <a class="btn btn-xs" href="{{ url_for('quests.asset_file', asset_id=a.id) }}">{{ icon('download') }}</a>
+          {% else %}
+            <a class="btn btn-xs" href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ icon('external') }} Open</a>
+          {% endif %}
+          <form method="post" action="{{ url_for('quests.delete_asset', asset_id=a.id) }}" data-confirm="Remove '{{ a.label }}' from your Inventory?">{{ csrf() }}<button class="btn btn-xs btn-danger" aria-label="Delete {{ a.label }}">{{ icon('trash') }}</button></form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p>Your bag is empty. Store the GitHub repo, demo link, PPT and certificates here.</p>{% endif %}
+    <form method="post" action="{{ url_for('quests.add_asset', opp_id=opp.id) }}" enctype="multipart/form-data" class="mt-2">
+      {{ csrf() }}
+      <div class="form-grid">
+        <div class="field"><label for="a-label">Label</label><input id="a-label" name="label" maxlength="80" placeholder="Pitch deck v2"></div>
+        <div class="field"><label for="a-cat">Category</label><select id="a-cat" name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="a-url">Link</label><input id="a-url" name="url" type="url" placeholder="https://github.com/..."></div>
+        <div class="field"><label for="a-file">or file (max 5 MB)</label><input id="a-file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.ppt,.pptx,.doc,.docx,.txt,.md,.zip"></div>
+      </div>
+      <button class="btn btn-sm">{{ icon('plus') }} Store item</button>
+    </form>
+  {% endcall %}
+</div>
+
+<div class="grid grid-2 mt-3">
+  {% call window('Notes', 'edit') %}
+    {% if opp.notes %}<pre class="out">{{ opp.notes }}</pre>{% else %}<p class="muted">No notes yet.</p>{% endif %}
+    <form method="post" action="{{ url_for('quests.add_note', opp_id=opp.id) }}">
+      {{ csrf() }}
+      <div class="field"><label for="note">Quick note</label><textarea id="note" name="note" rows="2" maxlength="1000" placeholder="Mentor said: focus on the demo"></textarea></div>
+      <button class="btn btn-sm">Add note</button>
+    </form>
+  {% endcall %}
+
+  {% call window('Training Log', 'book') %}
+    {% for j in journal %}
+      <p><strong>{{ j.title }}</strong> {{ '★' * j.rating }}<br><span class="small">Lesson: {{ j.lessons }}</span></p>
+    {% else %}
+      <p>After a result, log what worked and what didn't. Future you will thank you.</p>
+    {% endfor %}
+    <a class="btn btn-sm btn-pink" href="{{ url_for('journal.edit', quest=opp.id) }}">{{ icon('book') }} Write a post-mortem</a>
+  {% endcall %}
+</div>
+
+<div class="row mt-3">
+  <a class="btn btn-sm" href="{{ url_for('quests.calendar_one', opp_id=opp.id) }}">{{ icon('calendar') }} Add to calendar (.ics)</a>
+  <form method="post" action="{{ url_for('quests.delete', opp_id=opp.id) }}" data-confirm="Delete '{{ opp.title }}' with its rounds, plan and inventory? This can't be undone." data-confirm-ok="Delete quest">
+    {{ csrf() }}<button class="btn btn-sm btn-danger">{{ icon('trash') }} Delete quest</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var plan = document.querySelector("[data-plan]");
+  if (!plan) return;
+  plan.addEventListener("change", function (e) {
+    var box = e.target.closest("[data-milestone]");
+    if (!box) return;
+    box.disabled = true;
+    HT.post("/quests/milestones/" + box.dataset.milestone + "/toggle").then(function (j) {
+      box.disabled = false;
+      if (!j.ok) { box.checked = !box.checked; return HT.toast(j.error || "Could not save", "error"); }
+      if (!box.dataset.parent) {
+        box.closest(".phase").querySelectorAll("[data-parent]").forEach(function (c) { c.checked = !!j.done; c.closest("li").classList.toggle("done", !!j.done); });
+      } else {
+        box.closest("li").classList.toggle("done", !!j.done);
+        var parent = document.getElementById("m" + box.dataset.parent);
+        if (parent && j.phases) parent.checked = !!j.phases[box.dataset.parent];
+      }
+      var ring = plan.closest(".window-body").querySelector(".ring");
+      if (ring) { ring.style.setProperty("--pct", j.progress); ring.querySelector("span").textContent = j.progress + "%"; }
+      var all = plan.querySelectorAll("[data-parent]"), done = plan.querySelectorAll("[data-parent]:checked");
+      var c = document.querySelector("[data-plan-count]"); if (c) c.textContent = done.length + " / " + all.length;
+      HT.showPopups(j.popups, box);
+      if (j.progress === 100) HT.toast("Plan complete! Your avatar is at the trophy on the Quest Roadmap.", "success");
+    });
+  });
+})();
+</script>
+{% endblock %}

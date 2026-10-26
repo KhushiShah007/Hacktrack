@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pin_legend, empty_state, csrf %}
+{% block title %}{{ 'Quest Map' if mode == 'world' else opp.title ~ ' roadmap' }}{% endblock %}
+{% block content %}
+{% set W = layout.width %}{% set H = layout.height %}
+{% macro pct(v, total) %}{{ '%.3f'|format(v / total * 100) }}%{% endmacro %}
+<div class="map-shell">
+  <div class="map-toolbar">
+    {% if mode == 'world' %}
+      <h1 class="page-title mb-0" style="font-size:.9rem">World Map</h1>
+      <div class="row" style="gap:.4rem">
+        <a class="btn btn-xs" href="{{ url_for('quests.new') }}">{{ icon('plus') }} Quest</a>
+        <button class="btn btn-xs" type="button" data-theme-toggle>Day / night</button>
+      </div>
+    {% else %}
+      <a class="btn btn-xs" href="{{ url_for('main.world_map') }}">{{ icon('map') }} World map</a>
+      <div class="row" style="gap:.4rem">
+        <a class="btn btn-xs" href="{{ url_for('quests.detail', opp_id=opp.id) }}">{{ icon('list') }} Details</a>
+        <button class="btn btn-xs" type="button" data-theme-toggle>Day / night</button>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if not layout.pins %}
+    <section class="window">
+      <div class="titlebar"><span class="title">{{ icon('map') }} Empty road</span></div>
+      <div class="window-body">
+      {% if mode == 'world' %}
+        {% call empty_state('The road is empty', 'Add a quest and it appears as a pin on this road, ordered by deadline. Finish it and your avatar walks forward.', ('avatar', 'pin', 'trophy')) %}
+          <a class="btn btn-primary" href="{{ url_for('quests.new') }}">{{ icon('plus') }} Add a quest</a>
+          <form method="post" action="{{ url_for('main.load_sample') }}">{{ csrf() }}<button class="btn btn-gold">Load sample data</button></form>
+        {% endcall %}
+      {% else %}
+        {% call empty_state('No rounds or plan yet', 'Generate a back-plan or add rounds; each becomes a pin on the road to the trophy.', ('avatar', 'scroll', 'trophy')) %}
+          <form method="post" action="{{ url_for('quests.make_plan', opp_id=opp.id) }}">{{ csrf() }}<button class="btn btn-primary">{{ icon('bolt') }} Generate back-plan</button></form>
+          <a class="btn" href="{{ url_for('quests.detail', opp_id=opp.id) }}#rounds">Add rounds</a>
+        {% endcall %}
+      {% endif %}
+      </div>
+    </section>
+  {% else %}
+  <div class="world" style="--w: {{ W }}; --h: {{ H }}" data-world data-key="{{ map_key }}" data-mode="{{ mode }}"
+       data-avatar-at="{{ avatar_at }}" data-count="{{ layout.pins|length }}" data-trophy-ready="{{ 1 if trophy_ready else 0 }}"
+       {% if opp %}data-opp="{{ opp.id }}"{% endif %} role="region" aria-label="{{ 'World map of your quests' if mode == 'world' else 'Roadmap for ' ~ opp.title }}">
+    <svg class="road" viewBox="0 0 {{ W }} {{ H }}" preserveAspectRatio="none" aria-hidden="true" data-road-svg>
+      <path d="{{ layout.path }}" fill="none" stroke="#1b1022" stroke-width="50" stroke-linecap="round"/>
+      <path d="{{ layout.path }}" fill="none" stroke="var(--road-edge)" stroke-width="44" stroke-linecap="round"/>
+      <path d="{{ layout.path }}" fill="none" stroke="var(--road)" stroke-width="36" stroke-linecap="round"/>
+      <path d="{{ layout.path }}" fill="none" stroke="var(--road-line)" stroke-width="3" stroke-dasharray="10 14"/>
+      {% for seg in layout.segments %}<path d="{{ seg }}" fill="none" stroke="none" data-seg="{{ loop.index0 }}"/>{% endfor %}
+    </svg>
+    <canvas class="road-px" data-road-canvas data-path="{{ layout.path }}" hidden aria-hidden="true"></canvas>
+
+    <div class="cloud-layer" aria-hidden="true">
+      <span class="float-cloud" style="top:3%;animation-duration:60s">{{ sprite('cloud', 4) }}</span>
+      <span class="float-cloud" style="top:{{ 30 if layout.pins|length > 2 else 12 }}%;animation-duration:85s;animation-delay:-40s">{{ sprite('cloud', 3) }}</span>
+    </div>
+
+    <div class="map-title" aria-hidden="true">
+      <div class="words">
+        {% if mode == 'world' %}<span>QUEST</span><br><span>MAP</span>{% else %}<span>ROAD</span><br><span>MAP</span>{% endif %}
+      </div>
+      <div class="sub">{{ g.user.name if mode == 'world' else opp.title }}</div>
+    </div>
+
+    {% for s in layout.scenery %}
+    {% set sw = {'tree': 40, 'pine2': 40, 'sunflower': 20, 'mushroom': 22, 'log': 42, 'bush': 36, 'flowers': 26}[s.kind] %}
+    <div class="item scenery {{ 'flip' if s.flip }}" style="left:{{ pct(s.x, W) }};top:{{ pct(s.y, H) }};width:{{ pct(sw, W) }}" aria-hidden="true">
+      {{ sprite(s.kind, 4, 'scn') }}
+    </div>
+    {% endfor %}
+
+    <button class="item trophy {{ 'ready' if trophy_ready }}" type="button" data-trophy style="left:{{ pct(layout.trophy.x, W) }};top:{{ pct(layout.trophy.y + 30, H) }}"
+            aria-label="{{ 'Claim the trophy!' if trophy_ready else 'Trophy: finish every pin to unlock' }}">{{ sprite('trophy', 6) }}</button>
+    <div class="trophy-sign" style="left:{{ pct(layout.trophy.x, W) }};top:{{ pct(layout.trophy.y + 36, H) }}" aria-hidden="true">{{ 'GOAL!' if trophy_ready else 'GOAL' }}</div>
+
+    {% for p in layout.pins %}
+    <button class="item pin st-{{ p.state }}" type="button" data-pin="{{ p.index }}" style="left:{{ pct(p.x, W) }};top:{{ pct(p.y, H) }}"
+            aria-label="Pin {{ p.index + 1 }}: {{ p.title }}, {{ p.state }}">{{ sprite('pin', 4, variant=p.variant) }}</button>
+    <button class="sign st-{{ p.state }} urg-{{ p.urgency or '' }}" type="button" data-pin="{{ p.index }}"
+            style="left:{{ pct(p.sign.x, W) }};top:{{ pct(p.sign.y, H) }};width:{{ pct(p.sign.w, W) }};height:{{ pct(p.sign.h, H) }}"
+            aria-label="Open {{ p.title }}">
+      <span class="s-title">{{ p.title }}</span>
+      <span class="s-meta">
+        {% if p.type %}{{ type_icon(p.type, 2) }}{% elif p.kind == 'round' %}{{ sprite('sword', 2) }}{% else %}{{ sprite('scroll', 2) }}{% endif %}
+        <span class="s-count">{{ p.countdown }}</span>
+      </span>
+    </button>
+    {% endfor %}
+
+    <a class="start-btn" href="{{ url_for('main.dashboard') if mode == 'world' else url_for('quests.detail', opp_id=opp.id) }}" style="top:{{ pct(H - 44, H) }}">START</a>
+    <div class="item avatar" data-avatar style="left:{{ pct(layout.start.x, W) }};top:{{ pct(layout.start.y, H) }}" aria-hidden="true">
+      {{ sprite('avatar', 4, variant=g.user.avatar_look) }}
+    </div>
+    {% for c in layout.critters %}
+    <div class="critter {{ 'flip' if c.flip }}" style="left:{{ pct(c.x, W) }}" aria-hidden="true">{{ sprite(c.kind, 3, 'bob' if loop.first else '') }}</div>
+    {% endfor %}
+    <div class="ground" aria-hidden="true"></div>
+  </div>
+  <section class="window mt-2">
+    <div class="window-body tight">
+      {{ pin_legend() }}
+      <p class="small mt-1 mb-0">{% if mode == 'world' %}Active quests in deadline order (plus results from the last 30 days). Tap a pin or signboard for details and quick actions.{% else %}Back-plan phases and rounds in date order. Finish each pin to walk forward; reach the trophy for +150 XP.{% endif %}</p>
+    </div>
+  </section>
+  <template id="pin-variants">{% for v in ['red', 'green', 'gold', 'grey', 'missed'] %}<span data-variant="{{ v }}">{{ sprite('pin', 4, variant=v) }}</span>{% endfor %}</template>
+  <script type="application/json" id="pin-data">{{ layout.pins|tojson }}</script>
+  <script type="application/json" id="map-segments">{{ layout.segments|tojson }}</script>
+  <script type="application/json" id="map-meta">{{ {'width': W, 'height': H, 'start': layout.start, 'trophy': layout.trophy, 'pins': layout.pins|map(attribute='index')|list, 'statuses': C.STATUSES, 'labels': C.STATUS_LABELS, 'roundStatuses': C.ROUND_STATUSES}|tojson }}</script>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/map.js') }}"></script>{% endblock %}

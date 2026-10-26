@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, csrf %}
+{% block title %}Party invite{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:2rem auto">
+{% call window('Party invite', 'party') %}
+  <div class="center">
+    <div class="row" style="justify-content:center">{% for m in team.members if m.status == 'active' %}{{ sprite('avatar', 4, variant=m.avatar_look) }}{% endfor %}</div>
+    <h2 class="mt-2">Join "{{ team.name }}"?</h2>
+    <p>{{ team.active_members|map(attribute='name')|join(', ') }} invited you to their party.</p>
+    <div class="row" style="justify-content:center">
+      <form method="post" action="{{ url_for('party.respond', team_id=team.id) }}">{{ csrf() }}<input type="hidden" name="accept" value="1"><button class="btn btn-primary">Join party</button></form>
+      <form method="post" action="{{ url_for('party.respond', team_id=team.id) }}" data-confirm="Decline this invite?">{{ csrf() }}<input type="hidden" name="accept" value="0"><button class="btn">Decline</button></form>
+    </div>
+  </div>
+{% endcall %}
+</div>
+{% endblock %}

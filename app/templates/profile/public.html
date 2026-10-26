@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import window, heatmap, status_badge, csrf %}
+{% block title %}{{ user.name }} · Hall of Fame{% endblock %}
+{% block content %}
+<div {% if not g.user %}style="max-width:1100px;margin:0 auto;padding:1rem"{% endif %}>
+<section class="crt mt-1" aria-label="Player card">
+  <div class="crt-screen">
+    <div class="row" style="align-items:flex-end;gap:1.2rem">
+      <span class="bob">{{ sprite('avatar', 8, variant=user.avatar_look, label=user.name ~ ' avatar') }}</span>
+      <div style="flex:1;min-width:220px">
+        <p class="cyan" style="font-family:var(--font-display);font-size:.55rem;margin:0">HALL OF FAME · PLAYER @{{ user.username }}</p>
+        <h1 style="color:#ff7ac8;margin:.4rem 0;font-size:clamp(1rem,4vw,1.6rem)">{{ user.name }}</h1>
+        <p class="glow" style="font-family:var(--font-display);font-size:.6rem">LV{{ progress.level }} {{ progress.title|upper }} · {{ progress.xp }} XP</p>
+        <div class="bar xp" style="--pct: {{ progress.pct }}%;max-width:320px" role="progressbar" aria-label="XP" aria-valuenow="{{ progress.pct }}" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+        <p style="font-size:1.3rem">{{ user.bio or (user.look_label ~ ' from ' ~ (user.college or 'somewhere')) }}</p>
+        <div class="row">
+          {% if user.college %}<span class="pill" style="color:#ff8fd0">{{ user.college }}</span>{% endif %}
+          {% if user.branch %}<span class="pill" style="color:#ff8fd0">{{ user.branch }}{% if user.year %} · Year {{ user.year }}{% endif %}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="row mt-2">
+  <input id="share-url" readonly value="{{ share_url }}" aria-label="Profile link" style="flex:1;min-width:220px;max-width:480px">
+  <button class="btn btn-sm" type="button" data-copy="#share-url">{{ icon('copy') }} Copy link</button>
+  {% if is_me %}
+  <form method="post" action="{{ url_for('profile.toggle_privacy', username=user.username) }}" data-confirm="{{ 'Hide your Hall of Fame from everyone else?' if user.is_public else 'Make your Hall of Fame visible to anyone with the link?' }}" data-confirm-ok="Yes">
+    {{ csrf() }}<button class="btn btn-sm {{ 'btn-pink' if not user.is_public }}">{{ icon('eye') }} {{ 'Public: make private' if user.is_public else 'Private: make public' }}</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="grid grid-4 mt-2">
+  <div class="stat">{{ sprite('pin', 3) }}<span><span class="num">{{ stats.quests }}</span><br><span class="lbl">Quests</span></span></div>
+  <div class="stat">{{ sprite('coin', 3) }}<span><span class="num">{{ stats.submitted }}</span><br><span class="lbl">Submitted</span></span></div>
+  <div class="stat">{{ sprite('star', 3) }}<span><span class="num">{{ stats.finals }}</span><br><span class="lbl">Finals</span></span></div>
+  <div class="stat">{{ sprite('trophy', 3) }}<span><span class="num">{{ stats.wins }}</span><br><span class="lbl">Wins</span></span></div>
+</div>
+
+<div class="grid grid-2 mt-3">
+  {% call window('Badges', 'trophy') %}
+    {% if badges %}
+    <div class="badge-shelf">{% for b in badges %}<div class="badge-tile"><div class="medal">{{ sprite(b.icon if b.icon != 'flame' else 'flame', 3) }}</div><h4>{{ b.name }}</h4><p>{{ b.description }}</p></div>{% endfor %}</div>
+    {% else %}<p>No badges yet.</p>{% endif %}
+  {% endcall %}
+  {% call window('Skills', 'star') %}
+    {% for s, lvl in skills.items() %}<span class="tag">{{ s }} {{ '★' * lvl }}</span>{% else %}<p>No skills listed.</p>{% endfor %}
+    <h4 class="mt-2">Longest streak: {{ stats.streak }} days</h4>
+  {% endcall %}
+</div>
+
+{% call window('Activity heatmap', 'calendar', cls='mt-3') %}{{ heatmap(heat) }}{% endcall %}
+
+{% call window('Results timeline', 'list', cls='mt-3') %}
+  {% if results %}
+  <ol class="timeline">
+    {% for o in results %}
+    <li class="t-{{ {'won': 'cleared', 'shortlisted': 'cleared', 'submitted': 'pending', 'rejected': 'failed'}[o.status] }}">
+      <strong>{{ o.title }}</strong> {{ status_badge(o.status, o.status_label) }}<br>
+      <span class="small muted">{{ o.label }}{% if o.organizer %} · {{ o.organizer }}{% endif %} · {{ o.deadline|pretty }}{% if o.status == 'won' and o.prize_text %} · {{ o.prize_text }}{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p>No results yet. Every legend starts at level 1.</p>{% endif %}
+{% endcall %}
+{% if not g.user %}<p class="center mt-3"><a class="btn btn-primary" href="{{ url_for('main.landing') }}">Build your own Hall of Fame</a></p>{% endif %}
+</div>
+{% endblock %}

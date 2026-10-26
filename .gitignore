@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+instance/
+logs/
+widget_config.json
+.env
+# reference images belong to their original artists; keep them out of the public repo
+inspo/*.jpg
+inspo/*.png

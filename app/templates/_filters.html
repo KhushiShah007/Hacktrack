@@ -1,0 +1,24 @@
+{# shared search / filter / sort bar; expects args, types, statuses, modes #}
+<form class="filters" method="get" role="search" aria-label="Filter quests">
+  <div class="field search">
+    <label for="f-q">Search <span class="muted small">(press /)</span></label>
+    <input id="f-q" type="search" name="q" value="{{ args.get('q', '') }}" placeholder="Title, organiser, tag..." data-search>
+  </div>
+  <div class="field"><label for="f-type">Type</label>
+    <select id="f-type" name="type" data-autosubmit><option value="">All types</option>
+      {% for t in types %}<option value="{{ t }}" {% if args.get('type') == t %}selected{% endif %}>{{ C.TYPE_LABELS[t] }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="f-status">Status</label>
+    <select id="f-status" name="status" data-autosubmit><option value="">Any status</option><option value="open" {% if args.get('status') == 'open' %}selected{% endif %}>Open only</option>
+      {% for s in statuses %}<option value="{{ s }}" {% if args.get('status') == s %}selected{% endif %}>{{ C.STATUS_LABELS[s] }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="f-mode">Mode</label>
+    <select id="f-mode" name="mode" data-autosubmit><option value="">Any mode</option>
+      {% for m in modes %}<option value="{{ m }}" {% if args.get('mode') == m %}selected{% endif %}>{{ m|capitalize }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="f-range">Deadline</label>
+    <select id="f-range" name="range" data-autosubmit><option value="">Any time</option>
+      {% for k, l in [('overdue','Overdue'),('48h','Next 48 hours'),('week','This week'),('month','This month'),('later','Later')] %}<option value="{{ k }}" {% if args.get('range') == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="f-sort">Sort by</label>
+    <select id="f-sort" name="sort" data-autosubmit>
+      {% for k, l in [('deadline','Deadline'),('priority','Priority score'),('prize','Prize'),('title','Title'),('created','Newest')] %}<option value="{{ k }}" {% if args.get('sort', 'deadline') == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="row"><button class="btn btn-sm btn-primary">{{ icon('search') }} Go</button>
+    {% if args %}<a class="btn btn-sm btn-ghost" href="?">Reset</a>{% endif %}</div>
+</form>
